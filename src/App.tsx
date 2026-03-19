@@ -264,8 +264,9 @@ export default function App() {
     if (selectedFile && selectedFile.type.startsWith('video/')) {
       setFile(selectedFile);
       setError(null);
-      // Se il file è più grande di 50MB, lo consideriamo "lungo" e attiviamo il campionamento
-      setIsLongVideo(selectedFile.size > 50 * 1024 * 1024);
+      // Se il file è più grande di 15MB, lo consideriamo "lungo" e attiviamo il campionamento
+      // per evitare di superare i limiti di payload dell'API con un singolo file base64
+      setIsLongVideo(selectedFile.size > 15 * 1024 * 1024);
     } else {
       setError("Per favore seleziona un file video valido.");
     }
@@ -276,36 +277,69 @@ export default function App() {
       const video = document.createElement('video');
       video.src = URL.createObjectURL(videoFile);
       video.muted = true;
+      video.playsInline = true;
       
       const frames: string[] = [];
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
 
-      video.onloadedmetadata = async () => {
-        const duration = video.duration;
-        // Campioniamo circa 15-20 frame distribuiti su tutta la durata
-        // per non eccedere i limiti di memoria ma coprire tutta la lezione
-        const interval = duration / 15; 
-        
-        for (let i = 0; i < duration; i += interval) {
-          video.currentTime = i;
-          await new Promise(r => video.onseeked = r);
-          
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-          
-          // Comprimiamo il frame per risparmiare spazio
-          const frameData = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
-          frames.push(frameData);
-          setProgress(`Campionamento visivo: ${Math.round((i / duration) * 100)}%`);
-        }
-        
+      const timeout = setTimeout(() => {
         URL.revokeObjectURL(video.src);
-        resolve(frames);
+        reject("Il video sta impiegando troppo tempo per caricarsi. Prova con un formato diverso (MP4 consigliato).");
+      }, 30000);
+
+      const startExtraction = async () => {
+        clearTimeout(timeout);
+        try {
+          const duration = video.duration;
+          if (!duration || isNaN(duration)) {
+            throw new Error("Impossibile determinare la durata del video.");
+          }
+
+          // Campioniamo circa 15 frame distribuiti su tutta la durata
+          const interval = duration / 15; 
+          
+          for (let i = 0; i < duration; i += interval) {
+            video.currentTime = i;
+            await new Promise((r, rej) => {
+              const onSeeked = () => {
+                video.removeEventListener('seeked', onSeeked);
+                r(null);
+              };
+              video.addEventListener('seeked', onSeeked);
+              setTimeout(() => rej("Errore durante il campionamento del video."), 5000);
+            });
+            
+            const maxWidth = 1024;
+            const scale = Math.min(1, maxWidth / video.videoWidth);
+            canvas.width = video.videoWidth * scale;
+            canvas.height = video.videoHeight * scale;
+            
+            context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frameData = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+            frames.push(frameData);
+            setProgress(`Ottimizzazione visiva: ${Math.round((i / duration) * 100)}%`);
+          }
+          
+          URL.revokeObjectURL(video.src);
+          resolve(frames);
+        } catch (err) {
+          URL.revokeObjectURL(video.src);
+          reject(err);
+        }
       };
 
-      video.onerror = () => reject("Errore nel caricamento del video per il campionamento.");
+      if (video.readyState >= 1) {
+        startExtraction();
+      } else {
+        video.onloadedmetadata = startExtraction;
+      }
+
+      video.onerror = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(video.src);
+        reject("Errore nel caricamento del video. Assicurati che il file non sia corrotto e che il formato sia supportato dal browser.");
+      };
     });
   };
 
@@ -336,10 +370,11 @@ export default function App() {
       let parts: any[] = [];
 
       if (isLongVideo) {
-        setProgress("Analisi intelligente per lezioni lunghe...");
+        setProgress("Ottimizzazione video in corso...");
         const frames = await extractFrames(file);
         
-        frames.forEach((frame, index) => {
+        setProgress("Analisi AI dei contenuti...");
+        frames.forEach((frame) => {
           parts.push({
             inlineData: {
               mimeType: "image/jpeg",
@@ -349,7 +384,7 @@ export default function App() {
         });
 
         parts.push({
-          text: `Questi sono frame estratti sequenzialmente da una lezione universitaria di lunga durata. 
+          text: `Questi sono frame estratti sequenzialmente da una lezione. 
           Basandoti su queste immagini e sulla loro sequenza:
           1. Ricostruisci il filo logico della lezione.
           2. Estrai tutti gli appunti scritti (lavagna, slide).
@@ -362,7 +397,7 @@ export default function App() {
           }`
         });
       } else {
-        setProgress("Conversione file...");
+        setProgress("Preparazione file...");
         const base64Data = await fileToBase64(file);
         setProgress("Analisi AI completa...");
         
@@ -393,7 +428,11 @@ export default function App() {
         config: { responseMimeType: "application/json" }
       });
 
-      const content = JSON.parse(response.text || "{}");
+      if (!response.text) {
+        throw new Error("L'AI non ha restituito una risposta valida.");
+      }
+
+      const content = JSON.parse(response.text);
       const newResult = {
         transcription: content.transcription || "Nessun risultato.",
         notes: content.notes || "Nessun risultato."
@@ -572,7 +611,7 @@ export default function App() {
               <div className="text-center">
                 <p className="font-medium">{file ? file.name : "Seleziona un video"}</p>
                 <p className="text-sm text-black/40 mt-1">
-                  {isLongVideo ? "Video lungo rilevato: Ottimizzazione attiva" : "MP4, MOV o AVI"}
+                  {isLongVideo ? "Video ottimizzato: Campionamento attivo" : "MP4 (consigliato), MOV o AVI"}
                 </p>
               </div>
             </div>

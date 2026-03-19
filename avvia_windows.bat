@@ -18,9 +18,23 @@ if %errorlevel% neq 0 (
             exit /b
         )
     )
-    echo ❌ Installazione automatica fallita.
-    echo Per favore scarica Node.js manualmente da: https://nodejs.org/
-    echo Scegli la versione "LTS" (Long Term Support).
+    echo ❌ Installazione automatica fallita o winget non disponibile.
+    echo.
+    echo 💡 COME INSTALLARE MANUALMENTE:
+    echo 1. Vai su https://nodejs.org/
+    echo 2. Clicca sul pulsante grande a sinistra "LTS" (Long Term Support)
+    echo 3. Scarica l'installer .msi ed eseguilo
+    echo 4. Una volta finito, riavvia questo file .bat
+    echo.
+    pause
+    exit /b
+)
+
+:: Verifica se npm è disponibile
+npm -v >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ Node.js sembra installato ma 'npm' non è nel PATH.
+    echo Prova a riavviare il computer o reinstallare Node.js.
     pause
     exit /b
 )
