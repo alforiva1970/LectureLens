@@ -26,7 +26,10 @@ import {
   Cpu,
   Globe,
   Zap,
-  Sigma
+  Sigma,
+  Printer,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -258,6 +261,8 @@ export default function App() {
   const [quiz, setQuiz] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState(false);
   const [showFormulas, setShowFormulas] = useState(false);
+  const [isQuizFullScreen, setIsQuizFullScreen] = useState(false);
+  const [isFormulasFullScreen, setIsFormulasFullScreen] = useState(false);
   const [formulas, setFormulas] = useState<string | null>(null);
   const [loadingFormulas, setLoadingFormulas] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
@@ -469,6 +474,10 @@ export default function App() {
     navigator.clipboard.writeText(text);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const downloadNotes = () => {
     if (!result) return;
     let content = `# Trascrizione Lezione: ${file?.name || 'Lezione'}\n\n${result.transcription}\n\n# Appunti Estratti\n\n${result.notes}`;
@@ -553,7 +562,7 @@ export default function App() {
       {/* Quiz Modal */}
       <AnimatePresence>
         {showQuiz && quiz && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-6 ${isQuizFullScreen ? 'p-0' : 'p-6'} no-print`}>
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -565,21 +574,37 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              className={`relative bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isQuizFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
             >
               <div className="p-6 border-b border-black/5 flex items-center justify-between bg-emerald-50/30">
                 <div className="flex items-center gap-2 font-bold text-emerald-700">
                   <Zap className="w-5 h-5" />
                   <span>Quiz di Ripasso</span>
                 </div>
-                <button 
-                  onClick={() => setShowQuiz(false)}
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
-                >
-                  <AlertCircle className="w-5 h-5 rotate-45" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handlePrint}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    title="Stampa Quiz"
+                  >
+                    <Printer className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setIsQuizFullScreen(!isQuizFullScreen)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    title={isQuizFullScreen ? "Riduci" : "Ingrandisci"}
+                  >
+                    {isQuizFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                  </button>
+                  <button 
+                    onClick={() => setShowQuiz(false)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                  >
+                    <AlertCircle className="w-5 h-5 rotate-45" />
+                  </button>
+                </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-emerald max-w-none">
+              <div className="p-8 overflow-y-auto prose prose-emerald max-w-none custom-scrollbar">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -603,7 +628,7 @@ export default function App() {
       {/* Formulas Modal */}
       <AnimatePresence>
         {showFormulas && formulas && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-6 ${isFormulasFullScreen ? 'p-0' : 'p-6'} no-print`}>
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -615,21 +640,37 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              className={`relative bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isFormulasFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
             >
               <div className="p-6 border-b border-black/5 flex items-center justify-between bg-blue-50/30">
                 <div className="flex items-center gap-2 font-bold text-blue-700">
                   <Sigma className="w-5 h-5" />
                   <span>Formulario & Teoremi</span>
                 </div>
-                <button 
-                  onClick={() => setShowFormulas(false)}
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
-                >
-                  <AlertCircle className="w-5 h-5 rotate-45" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handlePrint}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    title="Stampa Formulario"
+                  >
+                    <Printer className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setIsFormulasFullScreen(!isFormulasFullScreen)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    title={isFormulasFullScreen ? "Riduci" : "Ingrandisci"}
+                  >
+                    {isFormulasFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                  </button>
+                  <button 
+                    onClick={() => setShowFormulas(false)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                  >
+                    <AlertCircle className="w-5 h-5 rotate-45" />
+                  </button>
+                </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-blue max-w-none">
+              <div className="p-8 overflow-y-auto prose prose-blue max-w-none custom-scrollbar">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -650,8 +691,28 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Print-only content for modals when they are open */}
+      <div className="hidden print:block print-content p-10">
+        {showQuiz && (
+          <div className="prose prose-emerald max-w-none">
+            <h1>Quiz di Ripasso</h1>
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {quiz}
+            </ReactMarkdown>
+          </div>
+        )}
+        {showFormulas && (
+          <div className="prose prose-blue max-w-none">
+            <h1>Formulario & Teoremi</h1>
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {formulas}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
+
       {/* Header */}
-      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10 no-print">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
@@ -665,7 +726,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-6 py-12 no-print">
         <div className="grid lg:grid-cols-12 gap-12">
           
           {/* Left Column: Upload & Controls */}
@@ -833,8 +894,15 @@ export default function App() {
                           Genera Quiz
                         </button>
                         <button 
-                          onClick={downloadNotes}
+                          onClick={handlePrint}
                           className="flex items-center gap-2 px-3 py-1.5 bg-black text-white text-xs rounded-lg hover:bg-black/80 transition-all"
+                        >
+                          <Printer className="w-3 h-3" />
+                          Stampa / PDF
+                        </button>
+                        <button 
+                          onClick={downloadNotes}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-black/5 text-black text-xs rounded-lg hover:bg-black/10 transition-all"
                         >
                           <Download className="w-3 h-3" />
                           Scarica .md

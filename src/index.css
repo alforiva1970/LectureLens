@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+@layer base {
+  @media print {
+    body {
+      background: white !important;
+      color: black !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .print-only {
+      display: block !important;
+    }
+    .print-content {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      overflow: visible !important;
+      position: relative !important;
+    }
+    .modal-container {
+      position: static !important;
+      display: block !important;
+      background: white !important;
+    }
+    .prose {
+      max-width: none !important;
+      font-size: 12pt !important;
+    }
+    /* Ensure math is visible in print */
+    .katex-display {
+      margin: 1em 0 !important;
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+    }
+    .katex {
+      font-size: 1.1em !important;
+    }
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
