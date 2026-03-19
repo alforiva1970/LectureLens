@@ -30,7 +30,9 @@ import {
   Printer,
   Maximize2,
   Minimize2,
-  MonitorDown
+  MonitorDown,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -80,7 +82,7 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 z-[100] bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 transition-colors duration-500">
       <motion.div 
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -96,20 +98,20 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
               rotate: { duration: 10, repeat: Infinity, ease: "linear" },
               scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
             }}
-            className="w-32 h-32 rounded-[40px] bg-emerald-500/10 flex items-center justify-center"
+            className="w-32 h-32 rounded-[40px] bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center"
           >
-            <Rocket className="w-12 h-12 text-emerald-600" />
+            <Rocket className="w-12 h-12 text-emerald-600 dark:text-emerald-400" />
           </motion.div>
           
           {/* Decorative rings */}
-          <div className="absolute inset-0 border-2 border-emerald-500/5 rounded-[40px] -m-4 animate-pulse" />
-          <div className="absolute inset-0 border border-emerald-500/10 rounded-[40px] -m-8" />
+          <div className="absolute inset-0 border-2 border-emerald-500/5 dark:border-emerald-500/10 rounded-[40px] -m-4 animate-pulse" />
+          <div className="absolute inset-0 border border-emerald-500/10 dark:border-emerald-500/20 rounded-[40px] -m-8" />
         </div>
 
-        <h2 className="text-2xl font-bold tracking-tight mb-2">LectureLens</h2>
-        <p className="text-black/40 text-sm font-medium mb-8 uppercase tracking-widest">{message}</p>
+        <h2 className="text-2xl font-bold tracking-tight mb-2 dark:text-white">LectureLens</h2>
+        <p className="text-black/40 dark:text-white/40 text-sm font-medium mb-8 uppercase tracking-widest">{message}</p>
 
-        <div className="w-full h-1.5 bg-black/5 rounded-full overflow-hidden mb-4">
+        <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mb-4">
           <motion.div 
             className="h-full bg-emerald-500"
             initial={{ width: "0%" }}
@@ -117,7 +119,7 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
           />
         </div>
         
-        <div className="flex justify-between w-full text-[10px] font-mono text-black/20 uppercase tracking-tighter">
+        <div className="flex justify-between w-full text-[10px] font-mono text-black/20 dark:text-white/20 uppercase tracking-tighter">
           <span>Booting AI Core</span>
           <span>{Math.round(progress)}%</span>
         </div>
@@ -167,13 +169,13 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
   const currentStep = steps[step - 1];
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950 flex items-center justify-center p-6 transition-colors duration-500">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-xl w-full bg-white border border-black/5 shadow-2xl rounded-[40px] p-12 text-center relative overflow-hidden"
+        className="max-w-xl w-full bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 shadow-2xl rounded-[40px] p-12 text-center relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-black/5">
+        <div className="absolute top-0 left-0 w-full h-2 bg-black/5 dark:bg-white/5">
           <motion.div 
             className="h-full bg-emerald-500"
             initial={{ width: "0%" }}
@@ -182,13 +184,13 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
         </div>
 
         <div className="mb-8 flex justify-center">
-          <div className="w-20 h-20 bg-black/[0.02] rounded-3xl flex items-center justify-center">
+          <div className="w-20 h-20 bg-black/[0.02] dark:bg-white/[0.02] rounded-3xl flex items-center justify-center">
             {currentStep.icon}
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold tracking-tight mb-4">{currentStep.title}</h2>
-        <p className="text-black/50 leading-relaxed mb-8 text-lg">
+        <h2 className="text-3xl font-bold tracking-tight mb-4 dark:text-white">{currentStep.title}</h2>
+        <p className="text-black/50 dark:text-white/50 leading-relaxed mb-8 text-lg">
           {currentStep.description}
         </p>
 
@@ -201,7 +203,7 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Incolla qui la tua API Key (es. AIza...)"
-              className="w-full px-6 py-4 bg-black/5 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-center font-mono"
+              className="w-full px-6 py-4 bg-black/5 dark:bg-white/5 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-center font-mono dark:text-white"
             />
           </div>
         )}
@@ -210,7 +212,7 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
           {step > 1 && (
             <button 
               onClick={() => setStep(step - 1)}
-              className="px-8 py-4 text-black/40 font-medium hover:text-black transition-colors"
+              className="px-8 py-4 text-black/40 dark:text-white/40 font-medium hover:text-black dark:hover:text-white transition-colors"
             >
               Indietro
             </button>
@@ -237,7 +239,7 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
               key={i} 
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
-                i + 1 === step ? "w-8 bg-emerald-500" : "bg-black/10"
+                i + 1 === step ? "w-8 bg-emerald-500" : "bg-black/10 dark:bg-white/10"
               )} 
             />
           ))}
@@ -248,6 +250,20 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
 };
 
 export default function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("LECTURE_LENS_DARK_MODE");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("LECTURE_LENS_DARK_MODE", JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   const [isInitializing, setIsInitializing] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -602,37 +618,37 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isQuizFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
+              className={`relative bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isQuizFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
             >
-              <div className="p-6 border-b border-black/5 flex items-center justify-between bg-emerald-50/30">
-                <div className="flex items-center gap-2 font-bold text-emerald-700">
+              <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-emerald-50/30 dark:bg-emerald-950/20">
+                <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
                   <Zap className="w-5 h-5" />
                   <span>Quiz di Ripasso</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={handlePrint}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60"
                     title="Stampa Quiz"
                   >
                     <Printer className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => setIsQuizFullScreen(!isQuizFullScreen)}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60"
                     title={isQuizFullScreen ? "Riduci" : "Ingrandisci"}
                   >
                     {isQuizFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                   </button>
                   <button 
                     onClick={() => setShowQuiz(false)}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors dark:text-white/60"
                   >
                     <AlertCircle className="w-5 h-5 rotate-45" />
                   </button>
                 </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-emerald max-w-none custom-scrollbar">
+              <div className="p-8 overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -640,10 +656,10 @@ export default function App() {
                   {quiz}
                 </ReactMarkdown>
               </div>
-              <div className="p-6 border-t border-black/5 bg-black/[0.01] flex justify-end">
+              <div className="p-6 border-t border-black/5 dark:border-white/10 bg-black/[0.01] dark:bg-white/[0.01] flex justify-end">
                 <button 
                   onClick={() => setShowQuiz(false)}
-                  className="px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-black/80 transition-all"
+                  className="px-6 py-2 bg-black dark:bg-white dark:text-black text-white rounded-xl font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-all"
                 >
                   Chiudi
                 </button>
@@ -668,37 +684,37 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isFormulasFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
+              className={`relative bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isFormulasFullScreen ? 'w-full h-full rounded-none' : 'w-full max-w-2xl rounded-3xl max-h-[80vh]'}`}
             >
-              <div className="p-6 border-b border-black/5 flex items-center justify-between bg-blue-50/30">
-                <div className="flex items-center gap-2 font-bold text-blue-700">
+              <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-blue-50/30 dark:bg-blue-950/20">
+                <div className="flex items-center gap-2 font-bold text-blue-700 dark:text-blue-400">
                   <Sigma className="w-5 h-5" />
                   <span>Formulario & Teoremi</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={handlePrint}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60"
                     title="Stampa Formulario"
                   >
                     <Printer className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => setIsFormulasFullScreen(!isFormulasFullScreen)}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors text-black/60"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-black/60 dark:text-white/60"
                     title={isFormulasFullScreen ? "Riduci" : "Ingrandisci"}
                   >
                     {isFormulasFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                   </button>
                   <button 
                     onClick={() => setShowFormulas(false)}
-                    className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors dark:text-white/60"
                   >
                     <AlertCircle className="w-5 h-5 rotate-45" />
                   </button>
                 </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-blue max-w-none custom-scrollbar">
+              <div className="p-8 overflow-y-auto prose prose-blue dark:prose-invert max-w-none custom-scrollbar">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -706,10 +722,10 @@ export default function App() {
                   {formulas}
                 </ReactMarkdown>
               </div>
-              <div className="p-6 border-t border-black/5 bg-black/[0.01] flex justify-end">
+              <div className="p-6 border-t border-black/5 dark:border-white/10 bg-black/[0.01] dark:bg-white/[0.01] flex justify-end">
                 <button 
                   onClick={() => setShowFormulas(false)}
-                  className="px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-black/80 transition-all"
+                  className="px-6 py-2 bg-black dark:bg-white dark:text-black text-white rounded-xl font-medium hover:bg-black/80 dark:hover:bg-white/80 transition-all"
                 >
                   Chiudi
                 </button>
@@ -740,15 +756,22 @@ export default function App() {
       </div>
 
       {/* Header */}
-      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10 no-print">
+      <header className="border-b border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-10 no-print transition-colors">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <Sparkles className="text-white w-5 h-5" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">LectureLens</h1>
+            <h1 className="text-xl font-semibold tracking-tight dark:text-white">LectureLens</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-black/60 dark:text-white/60"
+              title={darkMode ? "Attiva Tema Chiaro" : "Attiva Tema Scuro"}
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
             {isInstallable && (
               <button 
                 onClick={handleInstall}
@@ -758,7 +781,7 @@ export default function App() {
                 Installa App
               </button>
             )}
-            <div className="text-xs font-mono text-black/40 uppercase tracking-widest hidden sm:block">
+            <div className="text-xs font-mono text-black/40 dark:text-white/40 uppercase tracking-widest hidden sm:block">
               AI-Powered Study Assistant
             </div>
           </div>
@@ -771,10 +794,10 @@ export default function App() {
           {/* Left Column: Upload & Controls */}
           <div className="lg:col-span-4 space-y-8">
             <section className="space-y-4">
-              <h2 className="text-3xl font-medium tracking-tight leading-tight">
+              <h2 className="text-3xl font-medium tracking-tight leading-tight dark:text-white">
                 Trasforma le tue lezioni in <span className="italic font-serif">conoscenza strutturata</span>.
               </h2>
-              <p className="text-black/60 leading-relaxed">
+              <p className="text-black/60 dark:text-white/60 leading-relaxed">
                 Carica il video della tua lezione. Estrarremo automaticamente la trascrizione audio e gli appunti scritti sulla lavagna.
               </p>
             </section>
@@ -783,7 +806,7 @@ export default function App() {
               onClick={() => fileInputRef.current?.click()}
               className={cn(
                 "group relative border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer flex flex-col items-center justify-center gap-4",
-                file ? "border-emerald-500 bg-emerald-50/50" : "border-black/10 hover:border-black/20 hover:bg-black/[0.02]"
+                file ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5" : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
               )}
             >
               <input 
@@ -796,14 +819,14 @@ export default function App() {
               
               <div className={cn(
                 "w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                file ? "bg-emerald-100 text-emerald-600" : "bg-black/5 text-black/40"
+                file ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40"
               )}>
                 {file ? <FileVideo /> : <Upload />}
               </div>
 
               <div className="text-center">
-                <p className="font-medium">{file ? file.name : "Seleziona un video"}</p>
-                <p className="text-sm text-black/40 mt-1">
+                <p className="font-medium dark:text-white">{file ? file.name : "Seleziona un video"}</p>
+                <p className="text-sm text-black/40 dark:text-white/40 mt-1">
                   {isLongVideo ? "Video ottimizzato: Campionamento attivo" : "MP4 (consigliato), MOV o AVI"}
                 </p>
               </div>
@@ -815,8 +838,8 @@ export default function App() {
               className={cn(
                 "w-full py-4 rounded-2xl font-medium transition-all flex items-center justify-center gap-2",
                 !file || loading 
-                  ? "bg-black/5 text-black/20 cursor-not-allowed" 
-                  : "bg-black text-white hover:bg-black/90 active:scale-[0.98] shadow-xl shadow-black/10"
+                  ? "bg-black/5 dark:bg-white/5 text-black/20 dark:text-white/20 cursor-not-allowed" 
+                  : "bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 active:scale-[0.98] shadow-xl shadow-black/10 dark:shadow-white/5"
               )}
             >
               {loading ? (
@@ -836,7 +859,7 @@ export default function App() {
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 flex items-start gap-3"
+                className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 flex items-start gap-3"
               >
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <p className="text-sm leading-relaxed">{error}</p>
@@ -845,15 +868,15 @@ export default function App() {
 
             {/* History Section */}
             {history.length > 0 && (
-              <div className="pt-8 border-t border-black/5 space-y-4">
+              <div className="pt-8 border-t border-black/5 dark:border-white/10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-black/30">Cronologia Recente</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-black/30 dark:text-white/30">Cronologia Recente</h3>
                   <button 
                     onClick={() => {
                       localStorage.removeItem("LECTURE_LENS_HISTORY");
                       setHistory([]);
                     }}
-                    className="text-xs text-black/20 hover:text-red-400 transition-colors"
+                    className="text-xs text-black/20 dark:text-white/20 hover:text-red-400 transition-colors"
                   >
                     Cancella
                   </button>
@@ -863,10 +886,10 @@ export default function App() {
                     <button
                       key={item.id}
                       onClick={() => setResult(item.result)}
-                      className="w-full p-4 rounded-2xl bg-white border border-black/5 hover:border-black/10 hover:shadow-sm transition-all text-left group"
+                      className="w-full p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 hover:border-black/10 dark:hover:border-white/20 hover:shadow-sm transition-all text-left group"
                     >
-                      <p className="text-sm font-medium truncate group-hover:text-emerald-600 transition-colors">{item.name}</p>
-                      <p className="text-[10px] text-black/30 mt-1 uppercase tracking-tighter">{item.date}</p>
+                      <p className="text-sm font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors dark:text-white">{item.name}</p>
+                      <p className="text-[10px] text-black/30 dark:text-white/30 mt-1 uppercase tracking-tighter">{item.date}</p>
                     </button>
                   ))}
                 </div>
@@ -885,20 +908,20 @@ export default function App() {
                   className="space-y-8"
                 >
                   {/* Transcription Card */}
-                  <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-black/5 flex items-center justify-between bg-black/[0.01]">
-                      <div className="flex items-center gap-2 font-medium">
-                        <MessageSquareText className="w-4 h-4 text-emerald-600" />
+                  <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-black/[0.01] dark:bg-white/[0.01]">
+                      <div className="flex items-center gap-2 font-medium dark:text-white">
+                        <MessageSquareText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>{isLongVideo ? "Riassunto Strutturato" : "Trascrizione Audio"}</span>
                       </div>
                       <button 
                         onClick={() => copyToClipboard(result.transcription)}
-                        className="p-2 hover:bg-black/5 rounded-lg transition-colors text-black/40 hover:text-black"
+                        className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="p-8 max-h-[400px] overflow-y-auto prose prose-sm max-w-none">
+                    <div className="p-8 max-h-[400px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none custom-scrollbar">
                       <ReactMarkdown 
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
@@ -909,17 +932,17 @@ export default function App() {
                   </div>
 
                   {/* Visual Notes Card */}
-                  <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b border-black/5 flex items-center justify-between bg-black/[0.01]">
-                      <div className="flex items-center gap-2 font-medium">
-                        <BookOpen className="w-4 h-4 text-emerald-600" />
+                  <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-black/[0.01] dark:bg-white/[0.01]">
+                      <div className="flex items-center gap-2 font-medium dark:text-white">
+                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>Appunti Estratti</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button 
                           onClick={generateFormulas}
                           disabled={loadingFormulas}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs rounded-lg hover:bg-blue-100 transition-all font-medium disabled:opacity-50"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 text-xs rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all font-medium disabled:opacity-50"
                         >
                           {loadingFormulas ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sigma className="w-3 h-3" />}
                           Estrai Formulario
@@ -927,34 +950,34 @@ export default function App() {
                         <button 
                           onClick={generateQuiz}
                           disabled={loadingQuiz}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs rounded-lg hover:bg-emerald-100 transition-all font-medium disabled:opacity-50"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all font-medium disabled:opacity-50"
                         >
                           {loadingQuiz ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
                           Genera Quiz
                         </button>
                         <button 
                           onClick={handlePrint}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-black text-white text-xs rounded-lg hover:bg-black/80 transition-all"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-black dark:bg-white text-white dark:text-black text-xs rounded-lg hover:bg-black/80 dark:hover:bg-white/80 transition-all"
                         >
                           <Printer className="w-3 h-3" />
                           Stampa / PDF
                         </button>
                         <button 
                           onClick={downloadNotes}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-black/5 text-black text-xs rounded-lg hover:bg-black/10 transition-all"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 text-black dark:text-white text-xs rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all"
                         >
                           <Download className="w-3 h-3" />
                           Scarica .md
                         </button>
                         <button 
                           onClick={() => copyToClipboard(result.notes)}
-                          className="p-2 hover:bg-black/5 rounded-lg transition-colors text-black/40 hover:text-black"
+                          className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
                         >
                           <Copy className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                    <div className="p-8 max-h-[600px] overflow-y-auto prose prose-emerald max-w-none">
+                    <div className="p-8 max-h-[600px] overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar">
                       <ReactMarkdown 
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
@@ -965,8 +988,8 @@ export default function App() {
                   </div>
                 </motion.div>
               ) : (
-                <div className="h-full min-h-[400px] border-2 border-dashed border-black/5 rounded-3xl flex flex-col items-center justify-center text-black/20 gap-4">
-                  <div className="w-20 h-20 rounded-full bg-black/[0.02] flex items-center justify-center">
+                <div className="h-full min-h-[400px] border-2 border-dashed border-black/5 dark:border-white/5 rounded-3xl flex flex-col items-center justify-center text-black/20 dark:text-white/10 gap-4">
+                  <div className="w-20 h-20 rounded-full bg-black/[0.02] dark:bg-white/[0.02] flex items-center justify-center">
                     <Sparkles className="w-10 h-10" />
                   </div>
                   <p className="font-medium">I risultati appariranno qui dopo l'analisi</p>
@@ -979,23 +1002,23 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-black/5 mt-12">
+      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-black/5 dark:border-white/10 mt-12 no-print">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4 opacity-40">
+          <div className="flex items-center gap-4 opacity-40 dark:text-white">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               <span className="text-sm font-medium">Powered by Gemini 3.1 Flash</span>
             </div>
-            <div className="w-px h-4 bg-black/20" />
+            <div className="w-px h-4 bg-black/20 dark:bg-white/20" />
             <div className="flex items-center gap-2">
               <GraduationCap className="w-4 h-4" />
               <span className="text-sm italic">Per chi studia e lavora con passione</span>
             </div>
           </div>
-          <div className="flex gap-8 text-sm font-medium text-black/40">
-            <a href="#" className="hover:text-black transition-colors">Privacy</a>
-            <a href="#" className="hover:text-black transition-colors">Termini</a>
-            <a href="#" className="hover:text-black transition-colors">Supporto</a>
+          <div className="flex gap-8 text-sm font-medium text-black/40 dark:text-white/40">
+            <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Privacy</a>
+            <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Termini</a>
+            <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Supporto</a>
           </div>
         </div>
       </footer>
