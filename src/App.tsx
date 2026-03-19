@@ -365,7 +365,7 @@ export default function App() {
 
     try {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey || "" });
-      const model = "gemini-3.1-flash-preview";
+      const model = "gemini-3-flash-preview";
       
       let parts: any[] = [];
 
@@ -482,7 +482,7 @@ export default function App() {
     try {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-preview",
+        model: "gemini-3-flash-preview",
         contents: `Basandoti su questi appunti di una lezione, genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
         Appunti: ${result.notes}`,
       });
