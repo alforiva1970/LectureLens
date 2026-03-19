@@ -25,10 +25,14 @@ import {
   Rocket,
   Cpu,
   Globe,
-  Zap
+  Zap,
+  Sigma
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -253,6 +257,9 @@ export default function App() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quiz, setQuiz] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [showFormulas, setShowFormulas] = useState(false);
+  const [formulas, setFormulas] = useState<string | null>(null);
+  const [loadingFormulas, setLoadingFormulas] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -387,7 +394,7 @@ export default function App() {
           text: `Questi sono frame estratti sequenzialmente da una lezione. 
           Basandoti su queste immagini e sulla loro sequenza:
           1. Ricostruisci il filo logico della lezione.
-          2. Estrai tutti gli appunti scritti (lavagna, slide).
+          2. Estrai tutti gli appunti scritti (lavagna, slide). Usa la notazione LaTeX per formule matematiche, fisiche, pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
           3. Crea un riassunto strutturato e dettagliato che mantenga la coerenza temporale.
           
           Formatta la risposta ESATTAMENTE in questo formato JSON:
@@ -411,7 +418,7 @@ export default function App() {
           {
             text: `Analizza questo video di una lezione. 
             1. Trascrivi l'audio parlato.
-            2. Estrai gli appunti scritti visibili.
+            2. Estrai gli appunti scritti visibili. Usa la notazione LaTeX per formule matematiche, fisiche, pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
             
             Formatta la risposta ESATTAMENTE in questo formato JSON:
             {
@@ -464,7 +471,12 @@ export default function App() {
 
   const downloadNotes = () => {
     if (!result) return;
-    const content = `# Trascrizione Lezione: ${file?.name || 'Lezione'}\n\n${result.transcription}\n\n# Appunti Estratti\n\n${result.notes}`;
+    let content = `# Trascrizione Lezione: ${file?.name || 'Lezione'}\n\n${result.transcription}\n\n# Appunti Estratti\n\n${result.notes}`;
+    
+    if (formulas) {
+      content += `\n\n# Formulario & Teoremi\n\n${formulas}`;
+    }
+    
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -483,7 +495,9 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Basandoti su questi appunti di una lezione, genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
+        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, etc.), genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
+        Includi domande su concetti teorici (teoremi, leggi, definizioni) e piccoli esercizi di calcolo (limiti, derivate, integrali, equazioni differenziali, problemi di fisica) se presenti negli appunti.
+        Usa la notazione LaTeX per ogni formula.
         Appunti: ${result.notes}`,
       });
       setQuiz(response.text || "Impossibile generare il quiz.");
@@ -492,6 +506,30 @@ export default function App() {
       console.error(err);
     } finally {
       setLoadingQuiz(false);
+    }
+  };
+
+  const generateFormulas = async () => {
+    if (!result || !effectiveApiKey) return;
+    setLoadingFormulas(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, etc.), estrai un "Formulario, Leggi e Teoremi" essenziale.
+        Organizzalo così:
+        1. Formule e Leggi chiave (es. limiti, derivate, integrali doppi, derivate parziali, leggi della fisica, costanti).
+        2. Enunciati dei Teoremi o Principi citati (es. Gauss, Green, Stokes, Leggi di Newton, Maxwell, etc.).
+        3. Definizioni importanti.
+        Usa SEMPRE la notazione LaTeX per le formule.
+        Appunti: ${result.notes}`,
+      });
+      setFormulas(response.text || "Nessuna formula estratta.");
+      setShowFormulas(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingFormulas(false);
     }
   };
 
@@ -542,11 +580,66 @@ export default function App() {
                 </button>
               </div>
               <div className="p-8 overflow-y-auto prose prose-emerald max-w-none">
-                <ReactMarkdown>{quiz}</ReactMarkdown>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkMath]} 
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {quiz}
+                </ReactMarkdown>
               </div>
               <div className="p-6 border-t border-black/5 bg-black/[0.01] flex justify-end">
                 <button 
                   onClick={() => setShowQuiz(false)}
+                  className="px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-black/80 transition-all"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Formulas Modal */}
+      <AnimatePresence>
+        {showFormulas && formulas && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFormulas(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 border-b border-black/5 flex items-center justify-between bg-blue-50/30">
+                <div className="flex items-center gap-2 font-bold text-blue-700">
+                  <Sigma className="w-5 h-5" />
+                  <span>Formulario & Teoremi</span>
+                </div>
+                <button 
+                  onClick={() => setShowFormulas(false)}
+                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                >
+                  <AlertCircle className="w-5 h-5 rotate-45" />
+                </button>
+              </div>
+              <div className="p-8 overflow-y-auto prose prose-blue max-w-none">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkMath]} 
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {formulas}
+                </ReactMarkdown>
+              </div>
+              <div className="p-6 border-t border-black/5 bg-black/[0.01] flex justify-end">
+                <button 
+                  onClick={() => setShowFormulas(false)}
                   className="px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-black/80 transition-all"
                 >
                   Chiudi
@@ -706,9 +799,12 @@ export default function App() {
                       </button>
                     </div>
                     <div className="p-8 max-h-[400px] overflow-y-auto prose prose-sm max-w-none">
-                      <p className="text-black/70 leading-relaxed whitespace-pre-wrap">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkMath]} 
+                        rehypePlugins={[rehypeKatex]}
+                      >
                         {result.transcription}
-                      </p>
+                      </ReactMarkdown>
                     </div>
                   </div>
 
@@ -720,6 +816,14 @@ export default function App() {
                         <span>Appunti Estratti</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <button 
+                          onClick={generateFormulas}
+                          disabled={loadingFormulas}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs rounded-lg hover:bg-blue-100 transition-all font-medium disabled:opacity-50"
+                        >
+                          {loadingFormulas ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sigma className="w-3 h-3" />}
+                          Estrai Formulario
+                        </button>
                         <button 
                           onClick={generateQuiz}
                           disabled={loadingQuiz}
@@ -744,7 +848,12 @@ export default function App() {
                       </div>
                     </div>
                     <div className="p-8 max-h-[600px] overflow-y-auto prose prose-emerald max-w-none">
-                      <ReactMarkdown>{result.notes}</ReactMarkdown>
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkMath]} 
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {result.notes}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 </motion.div>
