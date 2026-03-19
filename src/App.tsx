@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { 
   Upload, 
@@ -16,7 +16,16 @@ import {
   MessageSquareText,
   Sparkles,
   Download,
-  GraduationCap
+  GraduationCap,
+  Key,
+  ArrowRight,
+  Heart,
+  Info,
+  ExternalLink,
+  Rocket,
+  Cpu,
+  Globe,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -28,15 +37,220 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const Preloader = ({ onComplete }: { onComplete: () => void }) => {
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState("Inizializzazione sistema...");
+
+  const messages = [
+    "Caricamento moduli AI...",
+    "Calibrazione visione artificiale...",
+    "Preparazione ambiente di studio...",
+    "Ottimizzazione per lezioni lunghe...",
+    "Quasi pronto..."
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          setTimeout(onComplete, 500);
+          return 100;
+        }
+        const next = prev + Math.random() * 15;
+        
+        // Update message based on progress
+        const msgIndex = Math.min(Math.floor((next / 100) * messages.length), messages.length - 1);
+        setMessage(messages[msgIndex]);
+        
+        return next;
+      });
+    }, 400);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6">
+      <motion.div 
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="flex flex-col items-center text-center max-w-sm w-full"
+      >
+        <div className="relative mb-12">
+          <motion.div 
+            animate={{ 
+              rotate: 360,
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              rotate: { duration: 10, repeat: Infinity, ease: "linear" },
+              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+            }}
+            className="w-32 h-32 rounded-[40px] bg-emerald-500/10 flex items-center justify-center"
+          >
+            <Rocket className="w-12 h-12 text-emerald-600" />
+          </motion.div>
+          
+          {/* Decorative rings */}
+          <div className="absolute inset-0 border-2 border-emerald-500/5 rounded-[40px] -m-4 animate-pulse" />
+          <div className="absolute inset-0 border border-emerald-500/10 rounded-[40px] -m-8" />
+        </div>
+
+        <h2 className="text-2xl font-bold tracking-tight mb-2">LectureLens</h2>
+        <p className="text-black/40 text-sm font-medium mb-8 uppercase tracking-widest">{message}</p>
+
+        <div className="w-full h-1.5 bg-black/5 rounded-full overflow-hidden mb-4">
+          <motion.div 
+            className="h-full bg-emerald-500"
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+          />
+        </div>
+        
+        <div className="flex justify-between w-full text-[10px] font-mono text-black/20 uppercase tracking-tighter">
+          <span>Booting AI Core</span>
+          <span>{Math.round(progress)}%</span>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
+  const [step, setStep] = useState(1);
+  const [apiKey, setApiKey] = useState("");
+
+  const steps = [
+    {
+      title: "Benvenuto in LectureLens",
+      description: "Questo strumento è stato creato per aiutarti a ottimizzare il tuo tempo. Trasformeremo le tue lezioni video in appunti pronti per lo studio.",
+      icon: <Heart className="w-8 h-8 text-rose-500" />
+    },
+    {
+      title: "Il potere di Google Gemini",
+      description: "L'app usa l'intelligenza artificiale più avanzata di Google. Per iniziare, hai solo bisogno di una 'chiave' gratuita che permette all'app di parlare con il cervello di Gemini.",
+      icon: <Sparkles className="w-8 h-8 text-amber-500" />
+    },
+    {
+      title: "Ottieni la tua chiave API",
+      description: "È semplicissimo: clicca il pulsante qui sotto, premi 'Create API key' e copiala. È totalmente gratuito per uso personale.",
+      icon: <Key className="w-8 h-8 text-emerald-500" />,
+      action: (
+        <a 
+          href="https://aistudio.google.com/app/apikey" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl hover:bg-black/80 transition-all font-medium mt-4"
+        >
+          Vai a Google AI Studio <ExternalLink className="w-4 h-4" />
+        </a>
+      )
+    },
+    {
+      title: "Configurazione Finale",
+      description: "Incolla qui la tua chiave API. Verrà salvata solo nel tuo browser per permetterti di usare l'app ogni volta che vuoi.",
+      icon: <CheckCircle2 className="w-8 h-8 text-blue-500" />,
+      input: true
+    }
+  ];
+
+  const currentStep = steps[step - 1];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-xl w-full bg-white border border-black/5 shadow-2xl rounded-[40px] p-12 text-center relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 w-full h-2 bg-black/5">
+          <motion.div 
+            className="h-full bg-emerald-500"
+            initial={{ width: "0%" }}
+            animate={{ width: `${(step / steps.length) * 100}%` }}
+          />
+        </div>
+
+        <div className="mb-8 flex justify-center">
+          <div className="w-20 h-20 bg-black/[0.02] rounded-3xl flex items-center justify-center">
+            {currentStep.icon}
+          </div>
+        </div>
+
+        <h2 className="text-3xl font-bold tracking-tight mb-4">{currentStep.title}</h2>
+        <p className="text-black/50 leading-relaxed mb-8 text-lg">
+          {currentStep.description}
+        </p>
+
+        {currentStep.action && <div className="mb-8">{currentStep.action}</div>}
+
+        {currentStep.input && (
+          <div className="mb-8">
+            <input 
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Incolla qui la tua API Key (es. AIza...)"
+              className="w-full px-6 py-4 bg-black/5 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-center font-mono"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-center gap-4">
+          {step > 1 && (
+            <button 
+              onClick={() => setStep(step - 1)}
+              className="px-8 py-4 text-black/40 font-medium hover:text-black transition-colors"
+            >
+              Indietro
+            </button>
+          )}
+          <button 
+            onClick={() => {
+              if (step === steps.length) {
+                if (apiKey.trim()) onComplete(apiKey.trim());
+              } else {
+                setStep(step + 1);
+              }
+            }}
+            disabled={currentStep.input && !apiKey.trim()}
+            className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            {step === steps.length ? "Inizia a studiare" : "Continua"}
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="mt-12 flex justify-center gap-2">
+          {steps.map((_, i) => (
+            <div 
+              key={i} 
+              className={cn(
+                "w-2 h-2 rounded-full transition-all",
+                i + 1 === step ? "w-8 bg-emerald-500" : "bg-black/10"
+              )} 
+            />
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function App() {
+  const [isInitializing, setIsInitializing] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ transcription: string; notes: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [isLongVideo, setIsLongVideo] = useState(false);
+  const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const effectiveApiKey = process.env.GEMINI_API_KEY || userApiKey;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -88,6 +302,18 @@ export default function App() {
     });
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const processVideo = async () => {
     if (!file) return;
 
@@ -97,7 +323,7 @@ export default function App() {
     setProgress("Inizializzazione...");
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: effectiveApiKey || "" });
       const model = "gemini-3.1-flash-preview";
       
       let parts: any[] = [];
@@ -194,6 +420,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-emerald-100">
+      <AnimatePresence>
+        {isInitializing && (
+          <Preloader onComplete={() => setIsInitializing(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!isInitializing && (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") && (
+          <SetupWizard onComplete={(key) => {
+            localStorage.setItem("LECTURE_LENS_KEY", key);
+            setUserApiKey(key);
+          }} />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
