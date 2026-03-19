@@ -587,7 +587,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-emerald-100">
+    <div className={cn(
+      "min-h-screen font-sans selection:bg-emerald-100 transition-colors duration-300",
+      darkMode ? "dark bg-zinc-950 text-zinc-100" : "bg-[#F8F9FA] text-[#1A1A1A]"
+    )}>
       <AnimatePresence>
         {isInitializing && (
           <Preloader onComplete={() => setIsInitializing(false)} />
