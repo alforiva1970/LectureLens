@@ -6,8 +6,24 @@ echo "------------------------------------------"
 # Verifica se Node.js è installato
 if ! command -v node &> /dev/null
 then
-    echo "❌ Errore: Node.js non è installato!"
-    echo "Per favore scaricalo da https://nodejs.org/"
+    echo "❌ Node.js non è installato!"
+    
+    # Se siamo su Mac, proviamo con Homebrew
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew &> /dev/null; then
+            echo "🛠️ Tento l'installazione automatica tramite Homebrew..."
+            brew install node@20
+            if [ $? -eq 0 ]; then
+                echo "✅ Node.js installato con successo!"
+                echo "⚠️ Riavvia questo script per iniziare."
+                exit
+            fi
+        fi
+    fi
+
+    echo "❌ Installazione automatica non riuscita."
+    echo "Per favore scarica Node.js manualmente da: https://nodejs.org/"
+    echo "Scegli la versione 'LTS' (Long Term Support)."
     exit
 fi
 
