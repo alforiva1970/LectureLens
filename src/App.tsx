@@ -29,7 +29,8 @@ import {
   Sigma,
   Printer,
   Maximize2,
-  Minimize2
+  Minimize2,
+  MonitorDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -266,11 +267,37 @@ export default function App() {
   const [isFormulasFullScreen, setIsFormulasFullScreen] = useState(false);
   const [formulas, setFormulas] = useState<string | null>(null);
   const [loadingFormulas, setLoadingFormulas] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const effectiveApiKey = process.env.GEMINI_API_KEY || userApiKey;
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -721,8 +748,19 @@ export default function App() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight">LectureLens</h1>
           </div>
-          <div className="text-xs font-mono text-black/40 uppercase tracking-widest">
-            AI-Powered Study Assistant
+          <div className="flex items-center gap-4">
+            {isInstallable && (
+              <button 
+                onClick={handleInstall}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+              >
+                <MonitorDown className="w-4 h-4" />
+                Installa App
+              </button>
+            )}
+            <div className="text-xs font-mono text-black/40 uppercase tracking-widest hidden sm:block">
+              AI-Powered Study Assistant
+            </div>
           </div>
         </div>
       </header>
