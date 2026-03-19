@@ -2,7 +2,7 @@
   "name": "LectureLens AI",
   "short_name": "LectureLens",
   "description": "Trasforma le tue lezioni video in appunti perfetti con l'AI.",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
