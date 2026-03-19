@@ -1,20 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🚀 LectureLens - Installazione Rapida
 
-# Run and deploy your AI Studio app
+Ciao! Questo strumento ti aiuterà a trasformare i video delle tue lezioni in appunti strutturati e trascrizioni audio utilizzando l'intelligenza artificiale di Google Gemini.
 
-This contains everything you need to run your app locally.
+## 🛠️ Requisiti Minimi
+Assicurati di avere **Node.js** installato sul tuo computer. Puoi scaricarlo da [nodejs.org](https://nodejs.org/).
 
-View your app in AI Studio: https://ai.studio/apps/79e1bbb1-687f-4b6e-8828-58d2894226fd
+## ⚡ Avvio in un Click
+Non c'è bisogno di scrivere comandi nel terminale:
 
-## Run Locally
+### Se usi Windows:
+1. Fai doppio clic sul file `avvia_windows.bat`.
+2. La prima volta installerà automaticamente tutto il necessario.
+3. L'app si aprirà nel tuo browser all'indirizzo `http://localhost:3000`.
 
-**Prerequisites:**  Node.js
+### Se usi Mac o Linux:
+1. Apri il terminale nella cartella del progetto.
+2. Digita `chmod +x avvia_mac_linux.sh` (solo la prima volta).
+3. Fai doppio clic sul file o digita `./avvia_mac_linux.sh`.
 
+## 🔑 Configurazione API Key
+Per far funzionare l'AI, avrai bisogno di una chiave API gratuita di Google Gemini:
+1. Ottienila qui: [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
+2. Crea un file chiamato `.env` nella cartella principale (puoi copiare `.env.example`).
+3. Incolla la tua chiave: `GEMINI_API_KEY=tua_chiave_qui`.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+*Creato con ❤️ per chi studia e lavora.*
