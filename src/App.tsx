@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -246,6 +246,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [isLongVideo, setIsLongVideo] = useState(false);
+  const [history, setHistory] = useState<{ id: string; name: string; date: string; result: any }[]>(() => {
+    const saved = localStorage.getItem("LECTURE_LENS_HISTORY");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quiz, setQuiz] = useState<string | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -387,10 +394,22 @@ export default function App() {
       });
 
       const content = JSON.parse(response.text || "{}");
-      setResult({
+      const newResult = {
         transcription: content.transcription || "Nessun risultato.",
         notes: content.notes || "Nessun risultato."
-      });
+      };
+      setResult(newResult);
+
+      // Salva in cronologia
+      const newHistoryItem = {
+        id: Date.now().toString(),
+        name: file.name,
+        date: new Date().toLocaleString(),
+        result: newResult
+      };
+      const updatedHistory = [newHistoryItem, ...history].slice(0, 10);
+      setHistory(updatedHistory);
+      localStorage.setItem("LECTURE_LENS_HISTORY", JSON.stringify(updatedHistory));
     } catch (err: any) {
       console.error(err);
       setError("Errore: il video potrebbe essere troppo complesso o il formato non supportato. Prova con un file più piccolo o una clip.");
@@ -406,16 +425,35 @@ export default function App() {
 
   const downloadNotes = () => {
     if (!result) return;
-    const content = `# Trascrizione Lezione: ${file?.name}\n\n${result.transcription}\n\n# Appunti Estratti\n\n${result.notes}`;
+    const content = `# Trascrizione Lezione: ${file?.name || 'Lezione'}\n\n${result.transcription}\n\n# Appunti Estratti\n\n${result.notes}`;
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Appunti_${file?.name.replace(/\.[^/.]+$/, "")}.md`;
+    a.download = `Appunti_${(file?.name || 'Lezione').replace(/\.[^/.]+$/, "")}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const generateQuiz = async () => {
+    if (!result || !effectiveApiKey) return;
+    setLoadingQuiz(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-preview",
+        contents: `Basandoti su questi appunti di una lezione, genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
+        Appunti: ${result.notes}`,
+      });
+      setQuiz(response.text || "Impossibile generare il quiz.");
+      setShowQuiz(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingQuiz(false);
+    }
   };
 
   return (
@@ -432,6 +470,51 @@ export default function App() {
             localStorage.setItem("LECTURE_LENS_KEY", key);
             setUserApiKey(key);
           }} />
+        )}
+      </AnimatePresence>
+
+      {/* Quiz Modal */}
+      <AnimatePresence>
+        {showQuiz && quiz && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQuiz(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 border-b border-black/5 flex items-center justify-between bg-emerald-50/30">
+                <div className="flex items-center gap-2 font-bold text-emerald-700">
+                  <Zap className="w-5 h-5" />
+                  <span>Quiz di Ripasso</span>
+                </div>
+                <button 
+                  onClick={() => setShowQuiz(false)}
+                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                >
+                  <AlertCircle className="w-5 h-5 rotate-45" />
+                </button>
+              </div>
+              <div className="p-8 overflow-y-auto prose prose-emerald max-w-none">
+                <ReactMarkdown>{quiz}</ReactMarkdown>
+              </div>
+              <div className="p-6 border-t border-black/5 bg-black/[0.01] flex justify-end">
+                <button 
+                  onClick={() => setShowQuiz(false)}
+                  className="px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-black/80 transition-all"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -527,6 +610,36 @@ export default function App() {
                 <p className="text-sm leading-relaxed">{error}</p>
               </motion.div>
             )}
+
+            {/* History Section */}
+            {history.length > 0 && (
+              <div className="pt-8 border-t border-black/5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-black/30">Cronologia Recente</h3>
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem("LECTURE_LENS_HISTORY");
+                      setHistory([]);
+                    }}
+                    className="text-xs text-black/20 hover:text-red-400 transition-colors"
+                  >
+                    Cancella
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {history.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setResult(item.result)}
+                      className="w-full p-4 rounded-2xl bg-white border border-black/5 hover:border-black/10 hover:shadow-sm transition-all text-left group"
+                    >
+                      <p className="text-sm font-medium truncate group-hover:text-emerald-600 transition-colors">{item.name}</p>
+                      <p className="text-[10px] text-black/30 mt-1 uppercase tracking-tighter">{item.date}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Results */}
@@ -568,6 +681,14 @@ export default function App() {
                         <span>Appunti Estratti</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <button 
+                          onClick={generateQuiz}
+                          disabled={loadingQuiz}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs rounded-lg hover:bg-emerald-100 transition-all font-medium disabled:opacity-50"
+                        >
+                          {loadingQuiz ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                          Genera Quiz
+                        </button>
                         <button 
                           onClick={downloadNotes}
                           className="flex items-center gap-2 px-3 py-1.5 bg-black text-white text-xs rounded-lg hover:bg-black/80 transition-all"

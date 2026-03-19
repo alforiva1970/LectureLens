@@ -25,4 +25,8 @@ Per far funzionare l'AI, avrai bisogno di una chiave API gratuita di Google Gemi
 3. Incolla la tua chiave: `GEMINI_API_KEY=tua_chiave_qui`.
 
 ---
+## ⚖️ Licenza
+Questo progetto è rilasciato sotto licenza **GNU Affero General Public License v3.0 (AGPL-3.0)**. Sentiti libero di usarlo, modificarlo e condividerlo, mantenendo sempre il codice aperto e libero per tutti.
+
+---
 *Creato con ❤️ per chi studia e lavora.*
