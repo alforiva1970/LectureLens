@@ -52,7 +52,8 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
     "Caricamento moduli AI...",
     "Calibrazione visione artificiale...",
     "Preparazione ambiente di studio...",
-    "Ottimizzazione per lezioni lunghe...",
+    "Ottimizzazione per lezioni scientifiche...",
+    "Analisi fluidodinamica e meccanica...",
     "Quasi pronto..."
   ];
 
@@ -399,7 +400,7 @@ export default function App() {
           text: `Questi sono frame estratti sequenzialmente da una lezione. 
           Basandoti su queste immagini e sulla loro sequenza:
           1. Ricostruisci il filo logico della lezione.
-          2. Estrai tutti gli appunti scritti (lavagna, slide). Usa la notazione LaTeX per formule matematiche, fisiche, pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
+          2. Estrai tutti gli appunti scritti (lavagna, slide). Usa la notazione LaTeX per formule matematiche, fisiche, ingegneristiche (aerospaziale, meccanica, etc.), pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$, $C_L = \frac{L}{\frac{1}{2}\rho v^2 S}$).
           3. Crea un riassunto strutturato e dettagliato che mantenga la coerenza temporale.
           
           Formatta la risposta ESATTAMENTE in questo formato JSON:
@@ -423,7 +424,7 @@ export default function App() {
           {
             text: `Analizza questo video di una lezione. 
             1. Trascrivi l'audio parlato.
-            2. Estrai gli appunti scritti visibili. Usa la notazione LaTeX per formule matematiche, fisiche, pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
+            2. Estrai gli appunti scritti visibili. Usa la notazione LaTeX per formule matematiche, fisiche, ingegneristiche (aerospaziale, meccanica, etc.), pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$, $C_L = \frac{L}{\frac{1}{2}\rho v^2 S}$).
             
             Formatta la risposta ESATTAMENTE in questo formato JSON:
             {
@@ -504,8 +505,8 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, etc.), genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
-        Includi domande su concetti teorici (teoremi, leggi, definizioni) e piccoli esercizi di calcolo (limiti, derivate, integrali, equazioni differenziali, problemi di fisica) se presenti negli appunti.
+        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, Ingegneria Aerospaziale, etc.), genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
+        Includi domande su concetti teorici (teoremi, leggi, definizioni) e piccoli esercizi di calcolo (limiti, derivate, integrali, equazioni differenziali, problemi di fisica, aerodinamica, meccanica orbitale) se presenti negli appunti.
         Usa la notazione LaTeX per ogni formula.
         Appunti: ${result.notes}`,
       });
@@ -525,10 +526,10 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, etc.), estrai un "Formulario, Leggi e Teoremi" essenziale.
+        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, Ingegneria Aerospaziale, etc.), estrai un "Formulario, Leggi e Teoremi" essenziale.
         Organizzalo così:
-        1. Formule e Leggi chiave (es. limiti, derivate, integrali doppi, derivate parziali, leggi della fisica, costanti).
-        2. Enunciati dei Teoremi o Principi citati (es. Gauss, Green, Stokes, Leggi di Newton, Maxwell, etc.).
+        1. Formule e Leggi chiave (es. limiti, derivate, integrali doppi, derivate parziali, leggi della fisica, costanti, equazioni di Navier-Stokes, portanza, resistenza, orbite).
+        2. Enunciati dei Teoremi o Principi citati (es. Gauss, Green, Stokes, Leggi di Newton, Maxwell, Bernoulli, Reynolds, etc.).
         3. Definizioni importanti.
         Usa SEMPRE la notazione LaTeX per le formule.
         Appunti: ${result.notes}`,
