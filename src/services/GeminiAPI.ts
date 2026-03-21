@@ -17,7 +17,7 @@ export const analyzeShortVideo = async (
   });
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       {
         parts: [
@@ -66,7 +66,7 @@ export const analyzeFramesInChunks = async (
     onProgress(`Analisi visiva profonda: ${Math.round((i / frames.length) * 100)}%`);
 
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           parts: [
@@ -98,7 +98,7 @@ export const generateNotesLongVideo = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       {
         parts: [
@@ -142,7 +142,7 @@ export const generateQuiz = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.quizPrompt}` }
     ],
@@ -160,7 +160,7 @@ export const generateExtra = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.extraPrompt}` }
     ],
@@ -176,7 +176,7 @@ export const extractKeyConcepts = async (
   const ai = new GoogleGenAI({ apiKey });
 
   const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti, estrai una lista di massimo 10 concetti chiave (parole o brevi frasi) che rappresentano il nucleo della lezione. Rispondi solo con un array JSON di stringhe.\n\nAppunti:\n\n${notes}` }
     ],
@@ -208,7 +208,7 @@ export const askTutor = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const chat = ai.chats.create({
-    model: "gemini-2.0-flash",
+    model: "gemini-3-flash-preview",
     config: {
       systemInstruction: `${config.tutorPersona}\n\nIl contesto della lezione è il seguente:\n\n${notes}`,
     },
