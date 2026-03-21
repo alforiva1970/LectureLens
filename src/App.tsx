@@ -32,7 +32,8 @@ import {
   Minimize2,
   MonitorDown,
   Moon,
-  Sun
+  Sun,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -128,7 +129,7 @@ const Preloader = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
-const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
+const SetupWizard = ({ onComplete, onSkip }: { onComplete: (key: string) => void, onSkip: () => void }) => {
   const [step, setStep] = useState(1);
   const [apiKey, setApiKey] = useState("");
 
@@ -208,28 +209,36 @@ const SetupWizard = ({ onComplete }: { onComplete: (key: string) => void }) => {
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-4">
-          {step > 1 && (
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4">
+            {step > 1 && (
+              <button 
+                onClick={() => setStep(step - 1)}
+                className="px-8 py-4 text-black/40 dark:text-white/40 font-medium hover:text-black dark:hover:text-white transition-colors"
+              >
+                Indietro
+              </button>
+            )}
             <button 
-              onClick={() => setStep(step - 1)}
-              className="px-8 py-4 text-black/40 dark:text-white/40 font-medium hover:text-black dark:hover:text-white transition-colors"
+              onClick={() => {
+                if (step === steps.length) {
+                  if (apiKey.trim()) onComplete(apiKey.trim());
+                } else {
+                  setStep(step + 1);
+                }
+              }}
+              disabled={currentStep.input && !apiKey.trim()}
+              className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all flex items-center gap-2 disabled:opacity-50"
             >
-              Indietro
+              {step === steps.length ? "Inizia a studiare" : "Continua"}
+              <ArrowRight className="w-5 h-5" />
             </button>
-          )}
+          </div>
           <button 
-            onClick={() => {
-              if (step === steps.length) {
-                if (apiKey.trim()) onComplete(apiKey.trim());
-              } else {
-                setStep(step + 1);
-              }
-            }}
-            disabled={currentStep.input && !apiKey.trim()}
-            className="px-10 py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-all flex items-center gap-2 disabled:opacity-50"
+            onClick={onSkip}
+            className="mt-2 text-sm text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white underline underline-offset-4 transition-colors"
           >
-            {step === steps.length ? "Inizia a studiare" : "Continua"}
-            <ArrowRight className="w-5 h-5" />
+            Salta questo passaggio (usa la chiave di sistema se disponibile)
           </button>
         </div>
 
@@ -265,6 +274,8 @@ export default function App() {
   }, [darkMode]);
 
   const [isInitializing, setIsInitializing] = useState(true);
+  const [skipWizard, setSkipWizard] = useState(false);
+  const [forceWizard, setForceWizard] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ transcription: string; notes: string } | null>(null);
@@ -289,7 +300,8 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const effectiveApiKey = process.env.GEMINI_API_KEY || userApiKey;
+  const envApiKey = process.env.GEMINI_API_KEY;
+  const effectiveApiKey = (envApiKey && envApiKey !== "MY_GEMINI_API_KEY" && envApiKey !== "undefined") ? envApiKey : userApiKey;
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -363,7 +375,11 @@ export default function App() {
                 r(null);
               };
               video.addEventListener('seeked', onSeeked);
-              setTimeout(() => rej("Errore durante il campionamento del video."), 5000);
+              // Timeout più lungo e fallback
+              setTimeout(() => {
+                video.removeEventListener('seeked', onSeeked);
+                r(null); // Fallback: procedi comunque se scade il timeout
+              }, 3000);
             });
             
             const maxWidth = 1024;
@@ -385,10 +401,14 @@ export default function App() {
         }
       };
 
-      if (video.readyState >= 1) {
+      video.onloadeddata = () => {
+        if (video.readyState >= 2) {
+          startExtraction();
+        }
+      };
+
+      if (video.readyState >= 2) {
         startExtraction();
-      } else {
-        video.onloadedmetadata = startExtraction;
       }
 
       video.onerror = () => {
@@ -413,6 +433,11 @@ export default function App() {
 
   const processVideo = async () => {
     if (!file) return;
+
+    if (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") {
+      setError("Chiave API mancante. Ricarica la pagina e inserisci una chiave API valida, oppure assicurati che l'ambiente sia configurato correttamente.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -440,16 +465,19 @@ export default function App() {
         });
 
         parts.push({
-          text: `Questi sono frame estratti sequenzialmente da una lezione. 
+          text: `Sei un assistente universitario esperto e meticoloso. Questi sono frame estratti sequenzialmente da una lezione. 
           Basandoti su queste immagini e sulla loro sequenza:
-          1. Ricostruisci il filo logico della lezione.
-          2. Estrai tutti gli appunti scritti (lavagna, slide). Usa la notazione LaTeX per formule matematiche, fisiche, ingegneristiche (aerospaziale, meccanica, etc.), pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$, $C_L = \frac{L}{\frac{1}{2}\rho v^2 S}$).
-          3. Crea un riassunto strutturato e dettagliato che mantenga la coerenza temporale.
+          1. Ricostruisci il filo logico della lezione e riassumi i concetti chiave.
+          2. Estrai in modo strutturato tutti gli appunti, le definizioni e le dimostrazioni visibili (lavagna, slide).
+          3. Organizza il testo in sezioni logiche con titoli chiari (usando Markdown).
+          4. Usa SEMPRE la notazione LaTeX per QUALSIASI formula matematica, chimica, fisica o ingegneristica (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
+          5. Se ci sono grafici o diagrammi, descrivili brevemente a parole.
+          6. Aggiungi una sezione finale "Punti Chiave" con un elenco puntato dei concetti più importanti.
           
           Formatta la risposta ESATTAMENTE in questo formato JSON:
           {
-            "transcription": "Riassunto strutturato della lezione basato sui frame...",
-            "notes": "Appunti estratti e organizzati in markdown..."
+            "transcription": "Riassunto discorsivo della lezione basato sui frame...",
+            "notes": "Appunti strutturati in markdown con formule in LaTeX..."
           }`
         });
       } else {
@@ -465,14 +493,18 @@ export default function App() {
             }
           },
           {
-            text: `Analizza questo video di una lezione. 
-            1. Trascrivi l'audio parlato.
-            2. Estrai gli appunti scritti visibili. Usa la notazione LaTeX per formule matematiche, fisiche, ingegneristiche (aerospaziale, meccanica, etc.), pedici, apici, matrici, sistemi, integrali doppi/tripli e derivate parziali (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$, $C_L = \frac{L}{\frac{1}{2}\rho v^2 S}$).
+            text: `Sei un assistente universitario esperto e meticoloso. Analizza questo video di una lezione. 
+            1. Trascrivi e riassumi in modo discorsivo i concetti chiave spiegati a voce dal professore.
+            2. Estrai in modo strutturato tutti gli appunti, le definizioni e le dimostrazioni visibili (lavagna, slide).
+            3. Organizza il testo in sezioni logiche con titoli chiari (usando Markdown).
+            4. Usa SEMPRE la notazione LaTeX per QUALSIASI formula matematica, chimica, fisica o ingegneristica (es. $H_2O$, $x^2$, $\frac{\partial f}{\partial x}$, $\iint_D f(x,y) dA$, $\vec{F} = m\vec{a}$).
+            5. Se ci sono grafici o diagrammi, descrivili brevemente a parole.
+            6. Aggiungi una sezione finale "Punti Chiave" con un elenco puntato dei concetti più importanti.
             
             Formatta la risposta ESATTAMENTE in questo formato JSON:
             {
-              "transcription": "testo della trascrizione...",
-              "notes": "appunti in markdown..."
+              "transcription": "Riassunto discorsivo della lezione...",
+              "notes": "Appunti strutturati in markdown con formule in LaTeX..."
             }`
           }
         ];
@@ -507,7 +539,7 @@ export default function App() {
       localStorage.setItem("LECTURE_LENS_HISTORY", JSON.stringify(updatedHistory));
     } catch (err: any) {
       console.error(err);
-      setError("Errore: il video potrebbe essere troppo complesso o il formato non supportato. Prova con un file più piccolo o una clip.");
+      setError(`Errore durante l'analisi: ${err.message || err.toString()}`);
     } finally {
       setLoading(false);
       setProgress("");
@@ -548,10 +580,13 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, Ingegneria Aerospaziale, etc.), genera un quiz di 5 domande a scelta multipla con le soluzioni alla fine. 
-        Includi domande su concetti teorici (teoremi, leggi, definizioni) e piccoli esercizi di calcolo (limiti, derivate, integrali, equazioni differenziali, problemi di fisica, aerodinamica, meccanica orbitale) se presenti negli appunti.
-        Usa la notazione LaTeX per ogni formula.
-        Appunti: ${result.notes}`,
+        contents: `Sei un professore universitario severo ma giusto. Basandoti ESCLUSIVAMENTE su questi appunti di una lezione, genera un quiz di verifica di 5 domande a scelta multipla (con 4 opzioni ciascuna, A, B, C, D).
+        Le domande devono testare sia la comprensione teorica (definizioni, teoremi) sia la capacità di applicare le formule (piccoli esercizi di calcolo).
+        Usa SEMPRE la notazione LaTeX per le formule matematiche.
+        Alla fine del quiz, aggiungi una sezione "Soluzioni e Spiegazioni" dove indichi la risposta corretta per ogni domanda e spieghi brevemente il perché.
+        
+        Appunti della lezione:
+        ${result.notes}`,
       });
       setQuiz(response.text || "Impossibile generare il quiz.");
       setShowQuiz(true);
@@ -569,13 +604,16 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Basandoti su questi appunti di una lezione scientifica (Analisi 1/2, Fisica, Ingegneria Aerospaziale, etc.), estrai un "Formulario, Leggi e Teoremi" essenziale.
-        Organizzalo così:
-        1. Formule e Leggi chiave (es. limiti, derivate, integrali doppi, derivate parziali, leggi della fisica, costanti, equazioni di Navier-Stokes, portanza, resistenza, orbite).
-        2. Enunciati dei Teoremi o Principi citati (es. Gauss, Green, Stokes, Leggi di Newton, Maxwell, Bernoulli, Reynolds, etc.).
-        3. Definizioni importanti.
-        Usa SEMPRE la notazione LaTeX per le formule.
-        Appunti: ${result.notes}`,
+        contents: `Sei un tutor universitario. Basandoti ESCLUSIVAMENTE su questi appunti, estrai un "Formulario e Teoremi" essenziale e ben organizzato.
+        Strutturalo in questo modo:
+        1. **Definizioni Principali**: I concetti base introdotti.
+        2. **Formule e Leggi**: Tutte le equazioni matematiche o fisiche presenti, spiegate brevemente (es. a cosa servono i vari termini dell'equazione).
+        3. **Teoremi e Principi**: Enunciati dei teoremi citati, con eventuali ipotesi e tesi.
+        
+        Usa SEMPRE la notazione LaTeX per le formule. Se gli appunti non contengono formule o teoremi, riassumi i concetti chiave in forma schematica.
+        
+        Appunti della lezione:
+        ${result.notes}`,
       });
       setFormulas(response.text || "Nessuna formula estratta.");
       setShowFormulas(true);
@@ -598,11 +636,18 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {!isInitializing && (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") && (
-          <SetupWizard onComplete={(key) => {
-            localStorage.setItem("LECTURE_LENS_KEY", key);
-            setUserApiKey(key);
-          }} />
+        {!isInitializing && (!skipWizard && (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") || forceWizard) && (
+          <SetupWizard 
+            onComplete={(key) => {
+              localStorage.setItem("LECTURE_LENS_KEY", key);
+              setUserApiKey(key);
+              setForceWizard(false);
+            }} 
+            onSkip={() => {
+              setSkipWizard(true);
+              setForceWizard(false);
+            }}
+          />
         )}
       </AnimatePresence>
 
@@ -651,7 +696,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar">
+              <div className="p-8 overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar text-black dark:text-white">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -717,7 +762,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="p-8 overflow-y-auto prose prose-blue dark:prose-invert max-w-none custom-scrollbar">
+              <div className="p-8 overflow-y-auto prose prose-blue dark:prose-invert max-w-none custom-scrollbar text-black dark:text-white">
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
                   rehypePlugins={[rehypeKatex]}
@@ -738,24 +783,30 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Print-only content for modals when they are open */}
+      {/* Print-only content */}
       <div className="hidden print:block print-content p-10">
-        {showQuiz && (
+        {showQuiz ? (
           <div className="prose prose-emerald max-w-none">
             <h1>Quiz di Ripasso</h1>
             <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
               {quiz}
             </ReactMarkdown>
           </div>
-        )}
-        {showFormulas && (
+        ) : showFormulas ? (
           <div className="prose prose-blue max-w-none">
             <h1>Formulario & Teoremi</h1>
             <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
               {formulas}
             </ReactMarkdown>
           </div>
-        )}
+        ) : result ? (
+          <div className="prose prose-emerald max-w-none">
+            <h1>Appunti: {file?.name || 'Lezione'}</h1>
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {result.notes}
+            </ReactMarkdown>
+          </div>
+        ) : null}
       </div>
 
       {/* Header */}
@@ -768,6 +819,13 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight dark:text-white">LectureLens</h1>
           </div>
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setForceWizard(true)}
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-black/60 dark:text-white/60"
+              title="Configura API Key"
+            >
+              <Key className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-black/60 dark:text-white/60"
@@ -805,35 +863,59 @@ export default function App() {
               </p>
             </section>
 
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "group relative border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer flex flex-col items-center justify-center gap-4",
-                file ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5" : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-              )}
-            >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-                accept="video/*"
-              />
-              
-              <div className={cn(
-                "w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                file ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40"
-              )}>
-                {file ? <FileVideo /> : <Upload />}
+            {file ? (
+              <div className="space-y-4">
+                <div className="relative rounded-3xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 aspect-video">
+                  <video 
+                    ref={videoRef}
+                    src={URL.createObjectURL(file)} 
+                    controls 
+                    className="w-full h-full object-contain"
+                  />
+                  <button 
+                    onClick={() => {
+                      setFile(null);
+                      setResult(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all"
+                    title="Rimuovi video"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium dark:text-white truncate px-4">{file.name}</p>
+                  <p className="text-sm text-black/40 dark:text-white/40 mt-1">
+                    {isLongVideo ? "Video ottimizzato: Campionamento attivo" : "Pronto per l'analisi"}
+                  </p>
+                </div>
               </div>
+            ) : (
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="group relative border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer flex flex-col items-center justify-center gap-4 border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                  accept="video/*"
+                />
+                
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40">
+                  <Upload />
+                </div>
 
-              <div className="text-center">
-                <p className="font-medium dark:text-white">{file ? file.name : "Seleziona un video"}</p>
-                <p className="text-sm text-black/40 dark:text-white/40 mt-1">
-                  {isLongVideo ? "Video ottimizzato: Campionamento attivo" : "MP4 (consigliato), MOV o AVI"}
-                </p>
+                <div className="text-center">
+                  <p className="font-medium dark:text-white">Seleziona un video</p>
+                  <p className="text-sm text-black/40 dark:text-white/40 mt-1">
+                    MP4 (consigliato), MOV o AVI
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               onClick={processVideo}
@@ -924,7 +1006,7 @@ export default function App() {
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="p-8 max-h-[400px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none custom-scrollbar">
+                    <div className="p-8 max-h-[400px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none custom-scrollbar text-black dark:text-white">
                       <ReactMarkdown 
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
@@ -980,7 +1062,7 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <div className="p-8 max-h-[600px] overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar">
+                    <div className="p-8 max-h-[600px] overflow-y-auto prose prose-emerald dark:prose-invert max-w-none custom-scrollbar text-black dark:text-white">
                       <ReactMarkdown 
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
