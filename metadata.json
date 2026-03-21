@@ -1,5 +1,5 @@
 {
-  "name": "LectureLens - Video to Notes",
-  "description": "Trascrivi l'audio e estrai appunti visivi dai tuoi video delle lezioni usando l'AI.",
+  "name": "LectureLens",
+  "description": "Supporto accademico intelligente per l'apprendimento profondo. Built by Progetto Siliceo.",
   "requestFramePermissions": []
 }
