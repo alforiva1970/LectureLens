@@ -24,14 +24,31 @@ interface TutorChatProps {
   notes: string;
   subjectType: SubjectType;
   apiKey: string;
+  initialMessages?: Message[];
+  onMessagesChange?: (messages: Message[]) => void;
   onClose: () => void;
+  academicContext?: string;
 }
 
-const TutorChat: React.FC<TutorChatProps> = ({ notes, subjectType, apiKey, onClose }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const TutorChat: React.FC<TutorChatProps> = ({ 
+  notes, 
+  subjectType, 
+  apiKey, 
+  initialMessages = [], 
+  onMessagesChange, 
+  onClose,
+  academicContext = ""
+}) => {
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onMessagesChange) {
+      onMessagesChange(messages);
+    }
+  }, [messages, onMessagesChange]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,7 +67,10 @@ const TutorChat: React.FC<TutorChatProps> = ({ notes, subjectType, apiKey, onClo
     setIsLoading(true);
 
     try {
-      const response = await askTutor(apiKey, subjectType, notes, messages, input);
+      const fullContextNotes = academicContext 
+        ? `${notes}\n\n[CONTESTO ACCADEMICO PRECEDENTE: L'utente ha già familiarità con i seguenti concetti: ${academicContext}]`
+        : notes;
+      const response = await askTutor(apiKey, subjectType, fullContextNotes, messages, input);
       const modelMessage: Message = { role: 'model', parts: [{ text: response }] };
       setMessages(prev => [...prev, modelMessage]);
     } catch (error) {

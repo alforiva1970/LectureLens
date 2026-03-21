@@ -169,6 +169,34 @@ export const generateExtra = async (
   return response.text || "Errore nella generazione del contenuto extra.";
 };
 
+export const extractKeyConcepts = async (
+  apiKey: string,
+  notes: string
+): Promise<string[]> => {
+  const ai = new GoogleGenAI({ apiKey });
+
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [
+      { text: `Basandoti su questi appunti, estrai una lista di massimo 10 concetti chiave (parole o brevi frasi) che rappresentano il nucleo della lezione. Rispondi solo con un array JSON di stringhe.\n\nAppunti:\n\n${notes}` }
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "array",
+        items: { type: "string" }
+      }
+    }
+  });
+
+  try {
+    return JSON.parse(response.text || "[]");
+  } catch (e) {
+    console.error("Failed to parse key concepts:", response.text);
+    return [];
+  }
+};
+
 export const askTutor = async (
   apiKey: string,
   subjectType: SubjectType,

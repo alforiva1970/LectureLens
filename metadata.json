@@ -1,5 +1,8 @@
 {
-  "name": "LectureLens",
-  "description": "Supporto accademico intelligente per l'apprendimento profondo. Built by Progetto Siliceo.",
-  "requestFramePermissions": []
+  "name": "LectureLens | Progetto Siliceo",
+  "description": "Trasforma le tue lezioni in conoscenza strutturata con l'AI. Privacy-first, accademico e sicuro.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }
