@@ -789,7 +789,7 @@ export default function App() {
           <div className="prose prose-emerald max-w-none">
             <h1>Appunti: {file?.name || 'Lezione'}</h1>
             <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {result.notes}
+              {result.notes.replace(/\\n/g, '\n')}
             </ReactMarkdown>
           </div>
         ) : null}
@@ -1402,7 +1402,7 @@ export default function App() {
                             remarkPlugins={[remarkMath]} 
                             rehypePlugins={[rehypeKatex]}
                           >
-                            {result.notes}
+                            {result.notes.replace(/\\n/g, '\n')}
                           </ReactMarkdown>
                         </div>
                       )}
