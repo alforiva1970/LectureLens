@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { SubjectType, SUBJECT_CONFIG } from "../constants/SubjectConfig";
 
 export const analyzeShortVideo = async (
@@ -21,23 +21,23 @@ export const analyzeShortVideo = async (
     contents: [
       {
         parts: [
-          { text: config.notesPrompt },
           {
             inlineData: {
               mimeType: videoFile.type,
               data: base64Data,
             },
           },
+          { text: config.notesPrompt },
         ],
       },
     ],
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "object",
+        type: Type.OBJECT,
         properties: {
-          transcription: { type: "string" },
-          notes: { type: "string" },
+          transcription: { type: Type.STRING },
+          notes: { type: Type.STRING },
         },
         required: ["transcription", "notes"],
       },
@@ -102,23 +102,23 @@ export const generateNotesLongVideo = async (
     contents: [
       {
         parts: [
-          { text: `Basandoti su questo contesto visivo:\n\n${visualContext}\n\nE su questo audio della lezione:\n\n${config.notesPrompt}` },
           {
             inlineData: {
               mimeType: "audio/mp3",
               data: audioBase64,
             },
           },
+          { text: `Analizza questa lezione basandoti sul contesto visivo fornito e sull'audio allegato.\n\nCONTESTO VISIVO (descrizione dei frame):\n${visualContext}\n\nISTRUZIONI PER GLI APPUNTI:\n${config.notesPrompt}` },
         ],
       },
     ],
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "object",
+        type: Type.OBJECT,
         properties: {
-          transcription: { type: "string" },
-          notes: { type: "string" },
+          transcription: { type: Type.STRING },
+          notes: { type: Type.STRING },
         },
         required: ["transcription", "notes"],
       },
@@ -183,8 +183,8 @@ export const extractKeyConcepts = async (
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: "array",
-        items: { type: "string" }
+        type: Type.ARRAY,
+        items: { type: Type.STRING }
       }
     }
   });

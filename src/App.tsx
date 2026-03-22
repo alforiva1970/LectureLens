@@ -4,7 +4,7 @@
  * Built by Progetto Siliceo (progettosiliceo.online)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Upload, 
   Sparkles, 
@@ -148,6 +148,19 @@ export default function App() {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
+
+  const videoUrl = useMemo(() => {
+    if (!file) return null;
+    return URL.createObjectURL(file);
+  }, [file]);
+
+  useEffect(() => {
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
 
   // Storage State
   const [storageMode, setStorageMode] = useState<'browser' | 'disk'>('browser');
@@ -919,7 +932,7 @@ export default function App() {
                     <div className="relative rounded-3xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 aspect-video">
                       <video 
                         ref={videoRef}
-                        src={URL.createObjectURL(file)} 
+                        src={videoUrl || ""} 
                         controls 
                         className="w-full h-full object-contain"
                       />
