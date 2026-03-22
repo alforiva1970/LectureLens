@@ -26,17 +26,14 @@ export const extractAudio = async (
   });
 
   const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-  const ffmpegURL = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/umd';
   
   try {
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-    const classWorkerURL = await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript');
     
     await ffmpeg.load({
       coreURL,
       wasmURL,
-      classWorkerURL,
     });
   } catch (e) {
     console.error("Errore durante il caricamento di FFmpeg:", e);

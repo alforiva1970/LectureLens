@@ -566,19 +566,17 @@ export default function App() {
   };
 
   const forceUpdate = async () => {
-    if (window.confirm("Sei sicuro di voler forzare l'aggiornamento? La cache verrà svuotata e l'app verrà ricaricata.")) {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
-        }
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
       }
-      const cacheNames = await caches.keys();
-      for (const name of cacheNames) {
-        await caches.delete(name);
-      }
-      window.location.reload();
     }
+    const cacheNames = await caches.keys();
+    for (const name of cacheNames) {
+      await caches.delete(name);
+    }
+    window.location.reload();
   };
 
   useEffect(() => {
