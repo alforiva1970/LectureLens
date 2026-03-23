@@ -64,7 +64,8 @@ import {
   generateNotesLongVideo, 
   generateQuiz, 
   generateExtra,
-  extractKeyConcepts
+  extractKeyConcepts,
+  analyzeVideoThreePass
 } from './services/GeminiAPI';
 import { SUBJECT_CONFIG, SubjectType } from './constants/SubjectConfig';
 import TutorChat from './components/TutorChat';
@@ -122,6 +123,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
   const [isLongVideo, setIsLongVideo] = useState(false);
+  const [useThreePass, setUseThreePass] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem("LECTURE_LENS_HISTORY");
     return saved ? JSON.parse(saved) : [];
@@ -265,7 +267,11 @@ export default function App() {
       } else {
         // Short video: direct analysis
         setProgress("Analisi video in corso...");
-        finalResult = await analyzeShortVideo(effectiveApiKey, subjectType, file);
+        if (useThreePass) {
+          finalResult = await analyzeVideoThreePass(effectiveApiKey, subjectType, file);
+        } else {
+          finalResult = await analyzeShortVideo(effectiveApiKey, subjectType, file);
+        }
       }
 
       if (finalResult) {
@@ -1002,6 +1008,21 @@ export default function App() {
                     </>
                   )}
                 </button>
+
+                {!isLongVideo && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id="threePass"
+                      checked={useThreePass}
+                      onChange={(e) => setUseThreePass(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <label htmlFor="threePass" className="text-sm text-black/60 dark:text-white/60">
+                      Abilita analisi tripla (più precisa)
+                    </label>
+                  </div>
+                )}
 
                 {error && (
                   <motion.div 

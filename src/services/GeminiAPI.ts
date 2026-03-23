@@ -4,7 +4,8 @@ import { SubjectType, SUBJECT_CONFIG } from "../constants/SubjectConfig";
 export const analyzeShortVideo = async (
   apiKey: string,
   subjectType: SubjectType,
-  videoFile: File
+  videoFile: File,
+  seed?: number
 ): Promise<{ transcription: string; notes: string }> => {
   const ai = new GoogleGenAI({ apiKey });
   const config = SUBJECT_CONFIG[subjectType];
@@ -41,6 +42,7 @@ export const analyzeShortVideo = async (
         },
         required: ["transcription", "notes"],
       },
+      seed: seed,
     },
   });
 
@@ -49,6 +51,49 @@ export const analyzeShortVideo = async (
   } catch (e) {
     console.error("Failed to parse Gemini response:", response.text);
     throw new Error("Errore nell'analisi del video. Riprova.");
+  }
+};
+
+export const analyzeVideoThreePass = async (
+  apiKey: string,
+  subjectType: SubjectType,
+  videoFile: File
+): Promise<{ transcription: string; notes: string }> => {
+  const results = await Promise.all([
+    analyzeShortVideo(apiKey, subjectType, videoFile, 1),
+    analyzeShortVideo(apiKey, subjectType, videoFile, 2),
+    analyzeShortVideo(apiKey, subjectType, videoFile, 3),
+  ]);
+
+  // Merge results (simple concatenation for now, could be improved)
+  const transcription = results.map(r => r.transcription).join('\n\n---\n\n');
+  const notes = results.map(r => r.notes).join('\n\n---\n\n');
+
+  // Final synthesis to merge and clean up
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      { text: `Hai analizzato la stessa lezione 3 volte. Ecco i risultati parziali:\n\n${notes}\n\nPer favore, unisci questi appunti in un unico documento coerente, eliminando le ripetizioni e includendo tutti i dettagli trovati in ciascuna analisi. Rispondi in formato JSON con la stessa struttura.` }
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          transcription: { type: Type.STRING },
+          notes: { type: Type.STRING },
+        },
+        required: ["transcription", "notes"],
+      },
+    },
+  });
+
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Failed to parse Gemini synthesis:", response.text);
+    throw new Error("Errore nella sintesi finale. Riprova.");
   }
 };
 
