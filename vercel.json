@@ -1,6 +1,10 @@
 {
   "headers": [
     {
+      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webmanifest|json))$",
+      "headers": []
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
