@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lecturelens-v3';
+const CACHE_NAME = 'lecturelens-v4';
 const ASSETS = [
   './',
   'index.html',

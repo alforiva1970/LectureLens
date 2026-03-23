@@ -99,11 +99,10 @@ const BMC_URL = BMC_USERNAME.startsWith('http')
   : `https://www.buymeacoffee.com/${BMC_USERNAME.replace('buymeacoffee.com/', '')}`;
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
-  useEffect(() => {
+  const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("LECTURE_LENS_DARK_MODE");
-    if (saved) setDarkMode(JSON.parse(saved));
-  }, []);
+    return saved ? JSON.parse(saved) : false;
+  });
 
   useEffect(() => {
     localStorage.setItem("LECTURE_LENS_DARK_MODE", JSON.stringify(darkMode));
@@ -182,10 +181,7 @@ export default function App() {
   const [subjectType, setSubjectType] = useState<SubjectType>('scientific');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const [userApiKey, setUserApiKey] = useState<string | null>(null);
-  useEffect(() => {
-    setUserApiKey(localStorage.getItem("LECTURE_LENS_KEY"));
-  }, []);
+  const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
   const [studyTime, setStudyTime] = useState(0);
   const [showBreakModal, setShowBreakModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
