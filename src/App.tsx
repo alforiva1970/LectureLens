@@ -124,10 +124,18 @@ export default function App() {
   const [progress, setProgress] = useState<string>("");
   const [isLongVideo, setIsLongVideo] = useState(false);
   const [useThreePass, setUseThreePass] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>(() => {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  
+  useEffect(() => {
     const saved = localStorage.getItem("LECTURE_LENS_HISTORY");
-    return saved ? JSON.parse(saved) : [];
-  });
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse history:", e);
+      }
+    }
+  }, []);
   const [showQuiz, setShowQuiz] = useState(false);
   const [quiz, setQuiz] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState(false);
