@@ -6,6 +6,3 @@ coverage/
 *.log
 .env*
 !.env.example
-
-# Ignore GitHub Actions workflows from AI Studio sync
-.github/
