@@ -6,18 +6,18 @@ interface PreloaderProps {
   onComplete: () => void;
 }
 
+const messages = [
+  "Caricamento moduli AI...",
+  "Calibrazione visione artificiale...",
+  "Preparazione ambiente di studio...",
+  "Ottimizzazione per lezioni scientifiche...",
+  "Analisi fluidodinamica e meccanica...",
+  "Quasi pronto..."
+];
+
 const Preloader: React.FC<PreloaderProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("Inizializzazione sistema...");
-
-  const messages = [
-    "Caricamento moduli AI...",
-    "Calibrazione visione artificiale...",
-    "Preparazione ambiente di studio...",
-    "Ottimizzazione per lezioni scientifiche...",
-    "Analisi fluidodinamica e meccanica...",
-    "Quasi pronto..."
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -38,7 +38,7 @@ const Preloader: React.FC<PreloaderProps> = ({ onComplete }) => {
     }, 400);
 
     return () => clearInterval(timer);
-  }, [onComplete, messages]);
+  }, [onComplete]);
 
   return (
     <div className="fixed inset-0 z-[100] bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 transition-colors duration-500">

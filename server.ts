@@ -1,3 +1,4 @@
+import os from "os";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -5,8 +6,14 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import axios from "axios";
 import dotenv from "dotenv";
+import multer from "multer";
+import { fileTypeFromBuffer } from "file-type";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
 
 dotenv.config();
+
+const upload = multer({ storage: multer.memoryStorage() });
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY!);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +24,36 @@ async function startServer() {
 
   app.use(express.json());
   app.use(cookieParser());
+
+  // --- FILE UPLOAD ENDPOINT ---
+  app.post("/api/upload", upload.single("file"), async (req: any, res: any) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nessun file caricato" });
+    }
+
+    const fileType = await fileTypeFromBuffer(req.file.buffer);
+    if (!fileType || (!fileType.mime.startsWith("audio/") && !fileType.mime.startsWith("image/"))) {
+      return res.status(400).json({ error: "Formato file non valido" });
+    }
+
+    try {
+      // Save buffer to temporary file for upload
+      const tempPath = path.join(os.tmpdir(), req.file.originalname);
+      await require("fs").promises.writeFile(tempPath, req.file.buffer);
+
+      const uploadResult = await fileManager.uploadFile(tempPath, {
+        mimeType: fileType.mime,
+        displayName: req.file.originalname,
+      });
+
+      await require("fs").promises.unlink(tempPath);
+
+      res.json({ uri: uploadResult.file.uri });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ error: "Errore durante l'upload" });
+    }
+  });
 
   // --- UNIVERSITY OAUTH & API PROXY ---
 

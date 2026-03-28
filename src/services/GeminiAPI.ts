@@ -1,5 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { SubjectType, SUBJECT_CONFIG } from "../constants/SubjectConfig";
+import { retry } from "../lib/utils";
 
 export const analyzeShortVideo = async (
   apiKey: string,
@@ -17,7 +18,7 @@ export const analyzeShortVideo = async (
     reader.readAsDataURL(videoFile);
   });
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
@@ -44,7 +45,51 @@ export const analyzeShortVideo = async (
       },
       seed: seed,
     },
-  });
+  }));
+
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Failed to parse Gemini response:", response.text);
+    throw new Error("Errore nell'analisi del video. Riprova.");
+  }
+};
+
+export const analyzeVideoWithFileApi = async (
+  apiKey: string,
+  subjectType: SubjectType,
+  fileUri: string
+): Promise<{ transcription: string; notes: string }> => {
+  const ai = new GoogleGenAI({ apiKey });
+  const config = SUBJECT_CONFIG[subjectType];
+
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      {
+        parts: [
+          {
+            fileData: {
+              mimeType: "video/mp4",
+              fileUri: fileUri,
+            },
+          },
+          { text: config.notesPrompt },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          transcription: { type: Type.STRING },
+          notes: { type: Type.STRING },
+        },
+        required: ["transcription", "notes"],
+      },
+    },
+  }));
 
   try {
     return JSON.parse(response.text || "{}");
@@ -110,7 +155,7 @@ export const analyzeFramesInChunks = async (
     const chunk = frames.slice(i, i + chunkSize);
     onProgress(`Analisi visiva profonda: ${Math.round((i / frames.length) * 100)}%`);
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
         {
@@ -125,7 +170,7 @@ export const analyzeFramesInChunks = async (
           ],
         },
       ],
-    });
+    }));
 
     visualContext += (response.text || "") + "\n\n";
   }
@@ -142,7 +187,7 @@ export const generateNotesLongVideo = async (
   const ai = new GoogleGenAI({ apiKey });
   const config = SUBJECT_CONFIG[subjectType];
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       {
@@ -168,7 +213,7 @@ export const generateNotesLongVideo = async (
         required: ["transcription", "notes"],
       },
     },
-  });
+  }));
 
   try {
     return JSON.parse(response.text || "{}");
@@ -186,12 +231,12 @@ export const generateQuiz = async (
   const ai = new GoogleGenAI({ apiKey });
   const config = SUBJECT_CONFIG[subjectType];
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.quizPrompt}` }
     ],
-  });
+  }));
 
   return response.text || "Errore nella generazione del quiz.";
 };
@@ -204,12 +249,12 @@ export const generateExtra = async (
   const ai = new GoogleGenAI({ apiKey });
   const config = SUBJECT_CONFIG[subjectType];
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.extraPrompt}` }
     ],
-  });
+  }));
 
   return response.text || "Errore nella generazione del contenuto extra.";
 };
@@ -220,7 +265,7 @@ export const extractKeyConcepts = async (
 ): Promise<string[]> => {
   const ai = new GoogleGenAI({ apiKey });
 
-  const response: GenerateContentResponse = await ai.models.generateContent({
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [
       { text: `Basandoti su questi appunti, estrai una lista di massimo 10 concetti chiave (parole o brevi frasi) che rappresentano il nucleo della lezione. Rispondi solo con un array JSON di stringhe.\n\nAppunti:\n\n${notes}` }
@@ -232,13 +277,66 @@ export const extractKeyConcepts = async (
         items: { type: Type.STRING }
       }
     }
-  });
+  }));
 
   try {
     return JSON.parse(response.text || "[]");
   } catch (e) {
     console.error("Failed to parse key concepts:", response.text);
     return [];
+  }
+};
+
+export const extractChineseWords = async (
+  apiKey: string,
+  imageFile: File
+): Promise<{ word: string; pinyin: string; translation: string }[]> => {
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Convert file to base64
+  const base64Data = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(imageFile);
+  });
+
+  const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      {
+        parts: [
+          {
+            inlineData: {
+              mimeType: imageFile.type,
+              data: base64Data,
+            },
+          },
+          { text: "Analizza questa immagine e estrai tutti i caratteri cinesi o parole cinesi presenti. Per ogni parola, fornisci il carattere (o i caratteri), il pinyin e la traduzione in italiano. Rispondi solo in formato JSON con un array di oggetti {word: string, pinyin: string, translation: string}." },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING },
+            pinyin: { type: Type.STRING },
+            translation: { type: Type.STRING },
+          },
+          required: ["word", "pinyin", "translation"],
+        },
+      },
+    },
+  }));
+
+  try {
+    return JSON.parse(response.text || "[]");
+  } catch (e) {
+    console.error("Failed to parse Chinese words:", response.text);
+    throw new Error("Errore nell'estrazione delle parole cinesi. Riprova.");
   }
 };
 
@@ -260,6 +358,6 @@ export const askTutor = async (
     history: history,
   });
 
-  const response = await chat.sendMessage({ message });
+  const response = await retry(() => chat.sendMessage({ message }));
   return response.text || "Il tutor non ha risposto.";
 };

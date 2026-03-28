@@ -44,16 +44,18 @@ import {
   Edit3,
   LogIn,
   RefreshCw,
-  Coffee
+  Coffee,
+  LayoutDashboard
 } from 'lucide-react';
 import * as UniversityService from './services/UniversityService';
 import { UniCourse, UniLesson } from './services/UniversityService';
+import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { cn } from './lib/utils';
+import { Link } from 'react-router-dom';
 
 // Modular Services & Components
 import { extractAudio } from './services/AudioExtractor';
@@ -65,7 +67,8 @@ import {
   generateQuiz, 
   generateExtra,
   extractKeyConcepts,
-  analyzeVideoThreePass
+  analyzeVideoThreePass,
+  analyzeVideoWithFileApi
 } from './services/GeminiAPI';
 import { SUBJECT_CONFIG, SubjectType } from './constants/SubjectConfig';
 import TutorChat from './components/TutorChat';
@@ -73,6 +76,8 @@ import TutorChat from './components/TutorChat';
 // Components
 import Preloader from './components/Preloader';
 import SetupWizard from './components/SetupWizard';
+import { Footer } from './suite/components/Footer';
+import { storage } from './lib/storage';
 
 interface Message {
   role: 'user' | 'model';
@@ -100,12 +105,11 @@ const BMC_URL = BMC_USERNAME.startsWith('http')
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("LECTURE_LENS_DARK_MODE");
-    return saved ? JSON.parse(saved) : false;
+    return storage.get("LECTURE_LENS_DARK_MODE", false);
   });
 
   useEffect(() => {
-    localStorage.setItem("LECTURE_LENS_DARK_MODE", JSON.stringify(darkMode));
+    storage.set("LECTURE_LENS_DARK_MODE", darkMode);
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -127,10 +131,10 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   
   useEffect(() => {
-    const saved = localStorage.getItem("LECTURE_LENS_HISTORY");
+    const saved = storage.get("LECTURE_LENS_HISTORY", []);
     if (saved) {
       try {
-        setHistory(JSON.parse(saved));
+        setHistory(saved);
       } catch (e) {
         console.error("Failed to parse history:", e);
       }
@@ -237,50 +241,27 @@ export default function App() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setProgress("Inizializzazione...");
+    setProgress("Caricamento file su server...");
 
     try {
-      let audioBase64 = "";
-      let visualContext = "";
-      let finalResult;
+      // Upload file to server
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (isLongVideo) {
-        // Extract Audio
-        setProgress("Estrazione e compressione audio (Mannaia a Basso Bitrate)...");
-        try {
-          audioBase64 = await extractAudio(file, (p) => setProgress(p.message));
-        } catch (err) {
-          console.error("Audio extraction failed:", err);
-        }
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-        // Extract Frames
-        setProgress("Estrazione frame ad alta qualità...");
-        const frames = await extractFrames(file, (p) => setProgress(p.message));
-
-        // Analyze Frames in chunks
-        visualContext = await analyzeFramesInChunks(
-          effectiveApiKey,
-          frames,
-          (msg) => setProgress(msg)
-        );
-
-        // Final Synthesis
-        setProgress("Generazione appunti finali...");
-        finalResult = await generateNotesLongVideo(
-          effectiveApiKey,
-          subjectType,
-          visualContext,
-          audioBase64
-        );
-      } else {
-        // Short video: direct analysis
-        setProgress("Analisi video in corso...");
-        if (useThreePass) {
-          finalResult = await analyzeVideoThreePass(effectiveApiKey, subjectType, file);
-        } else {
-          finalResult = await analyzeShortVideo(effectiveApiKey, subjectType, file);
-        }
+      if (!uploadResponse.ok) {
+        throw new Error("Errore durante l'upload del file");
       }
+
+      const { uri } = await uploadResponse.json();
+      setProgress("Analisi video in corso tramite Gemini File API...");
+
+      // Direct analysis using File API
+      const finalResult = await analyzeVideoWithFileApi(effectiveApiKey, subjectType, uri);
 
       if (finalResult) {
         setResult(finalResult);
@@ -308,7 +289,7 @@ export default function App() {
         setHistory(updatedHistory);
         
         if (storageMode === 'browser') {
-          localStorage.setItem("LECTURE_LENS_HISTORY", JSON.stringify(updatedHistory));
+          storage.set("LECTURE_LENS_HISTORY", updatedHistory);
         } else if (diskHandle) {
           // Update disk storage
           try {
@@ -564,7 +545,7 @@ export default function App() {
       
       // Persist
       if (storageMode === 'browser') {
-        localStorage.setItem("LECTURE_LENS_HISTORY", JSON.stringify(updated));
+        storage.set("LECTURE_LENS_HISTORY", updated);
       } else if (diskHandle) {
         diskHandle.createWritable().then((writable: any) => {
           writable.write(JSON.stringify(updated)).then(() => writable.close());
@@ -607,14 +588,13 @@ export default function App() {
 
   return (
     <div className={cn(
-      "min-h-screen font-sans selection:bg-emerald-100 transition-colors duration-300",
       darkMode ? "dark bg-zinc-950 text-zinc-100" : "bg-[#F8F9FA] text-[#1A1A1A]"
     )}>
-      <AnimatePresence>
-        {isInitializing && (
-          <Preloader onComplete={() => setIsInitializing(false)} />
-        )}
-      </AnimatePresence>
+          <AnimatePresence>
+            {isInitializing && (
+              <Preloader onComplete={() => setIsInitializing(false)} />
+            )}
+          </AnimatePresence>
 
       <AnimatePresence>
         {!isInitializing && (!skipWizard && (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") || forceWizard) && (
@@ -799,15 +779,9 @@ export default function App() {
               {extraContent}
             </ReactMarkdown>
           </div>
-        ) : result ? (
-          <div className="prose prose-emerald max-w-none">
-            <h1>Appunti: {file?.name || 'Lezione'}</h1>
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {result.notes.replace(/\\n/g, '\n')}
-            </ReactMarkdown>
-          </div>
         ) : null}
       </div>
+
 
       {/* Header */}
       <header className="border-b border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-10 no-print transition-colors">
@@ -831,6 +805,13 @@ export default function App() {
               <ShieldCheck className="w-5 h-5" />
               <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:block">Privacy Protetta</span>
             </button>
+            <Link 
+              to="/suite"
+              className="p-2 hover:bg-indigo-500/10 rounded-xl transition-colors text-indigo-600 dark:text-indigo-400"
+              title="Siliceo Suite"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+            </Link>
             <a 
               href={BMC_URL}
               target="_blank"
@@ -1511,83 +1492,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-black/5 dark:border-white/10 mt-12 no-print">
-        <div className="grid md:grid-cols-3 gap-12 mb-12">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="text-white w-5 h-5" />
-              </div>
-              <span className="text-lg font-bold dark:text-white">LectureLens</span>
-            </div>
-            <p className="text-sm text-black/40 dark:text-white/40 leading-relaxed">
-              Trasformiamo le tue lezioni in conoscenza strutturata. Parte della missione Siliceo per un'istruzione democratica e potenziata dall'AI.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-black/30 dark:text-white/30">Ecosistema Siliceo</h4>
-            <div className="grid grid-cols-1 gap-2">
-              <div className="flex items-center gap-2 text-xs text-black/60 dark:text-white/60">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                <span>LectureLens (Attivo)</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-black/20 dark:text-white/20 italic">
-                <div className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-                <span>Siliceo Notes (In arrivo)</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-black/20 dark:text-white/20 italic">
-                <div className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-                <span>Siliceo Research (In arrivo)</span>
-              </div>
-            </div>
-            <p className="text-[10px] text-emerald-600/60 dark:text-emerald-400/60 font-medium">
-              Un unico account per tutto il tuo percorso accademico.
-            </p>
-          </div>
-          
-          <div className="flex flex-col items-center md:items-end gap-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-black/80 dark:text-white/80">
-              Built by <a href="https://progettosiliceo.online" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline">Progetto Siliceo</a>
-            </div>
-            <a 
-              href={BMC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-[#FFDD00] text-black rounded-xl text-[10px] font-bold hover:scale-105 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/10"
-            >
-              <Coffee className="w-3 h-3" />
-              Supporta il Progetto
-            </a>
-            <div className="text-[10px] text-black/40 dark:text-white/40 uppercase tracking-widest font-medium">
-              v3.2.0-relational • Illumina, non bruciare.
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 opacity-60 dark:text-white mb-8">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-medium">Powered by Gemini 3.1 Flash</span>
-          </div>
-          <div className="hidden md:block w-px h-4 bg-black/20 dark:bg-white/20" />
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4" />
-            <span className="text-sm font-medium">Accademico & Sicuro</span>
-          </div>
-          <div className="hidden md:block w-px h-4 bg-black/20 dark:bg-white/20" />
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-sm font-medium">Proprietary License</span>
-          </div>
-        </div>
-        
-        <div className="flex flex-col md:flex-row justify-center items-center gap-8 mt-8 text-sm font-medium text-black/40 dark:text-white/40">
-          <button onClick={() => setShowPrivacy(true)} className="hover:text-black dark:hover:text-white transition-colors">Privacy</button>
-          <button onClick={() => setShowTerms(true)} className="hover:text-black dark:hover:text-white transition-colors">Termini</button>
-          <button onClick={() => setShowSupport(true)} className="hover:text-black dark:hover:text-white transition-colors">Supporto</button>
-        </div>
-      </footer>
+      <Footer activeApp="lecturelens" />
 
       {/* Info Modals */}
       <AnimatePresence>
@@ -1731,6 +1636,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
   );
 }
