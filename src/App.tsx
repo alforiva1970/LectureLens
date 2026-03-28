@@ -103,10 +103,23 @@ const BMC_URL = BMC_USERNAME.startsWith('http')
   ? BMC_USERNAME 
   : `https://www.buymeacoffee.com/${BMC_USERNAME.replace('buymeacoffee.com/', '')}`;
 
+interface QueueItem {
+  id: string;
+  file: File;
+  subjectType: SubjectType;
+  extractFormulas: boolean;
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  progress?: string;
+  result?: { transcription: string; notes: string };
+}
+
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
     return storage.get("LECTURE_LENS_DARK_MODE", false);
   });
+
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
 
   useEffect(() => {
     storage.set("LECTURE_LENS_DARK_MODE", darkMode);
@@ -219,55 +232,62 @@ export default function App() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type.startsWith('video/')) {
-      setFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files || []);
+    const videoFiles = selectedFiles.filter(f => f.type.startsWith('video/'));
+    
+    if (videoFiles.length > 0) {
+      const newItems: QueueItem[] = videoFiles.map(f => ({
+        id: crypto.randomUUID(),
+        file: f,
+        subjectType: subjectType,
+        extractFormulas: false,
+        status: 'pending'
+      }));
+      setQueue(prev => [...prev, ...newItems]);
       setError(null);
-      // Se il file è più grande di 15MB, lo consideriamo "lungo" e attiviamo il campionamento
-      // per evitare di superare i limiti di payload dell'API con un singolo file base64
-      setIsLongVideo(selectedFile.size > 15 * 1024 * 1024);
-    } else {
-      setError("Per favore seleziona un file video valido.");
+      setFile(videoFiles[0]);
+      setIsLongVideo(videoFiles[0].size > 15 * 1024 * 1024);
+    } else if (selectedFiles.length > 0) {
+      setError("Per favore seleziona file video validi.");
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleProcessVideo = async () => {
-    if (!file) return;
+  const handleProcessQueue = async () => {
     if (!effectiveApiKey || effectiveApiKey === "MY_GEMINI_API_KEY") {
       setError("Chiave API mancante. Inserisci una chiave valida nel Setup Wizard.");
       return;
     }
 
-    setLoading(true);
+    setIsProcessingQueue(true);
     setError(null);
-    setResult(null);
-    setProgress("Caricamento file su server...");
 
-    try {
-      // Upload file to server
-      const formData = new FormData();
-      formData.append("file", file);
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      if (item.status === 'completed') continue;
 
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'processing', progress: 'Caricamento...' } : x));
 
-      if (!uploadResponse.ok) {
-        throw new Error("Errore durante l'upload del file");
-      }
+      try {
+        const formData = new FormData();
+        formData.append("file", item.file);
 
-      const { uri } = await uploadResponse.json();
-      setProgress("Analisi video in corso tramite Gemini File API...");
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      // Direct analysis using File API
-      const finalResult = await analyzeVideoWithFileApi(effectiveApiKey, subjectType, uri);
+        if (!uploadResponse.ok) {
+          throw new Error("Errore durante l'upload del file");
+        }
 
-      if (finalResult) {
-        setResult(finalResult);
+        const { uri } = await uploadResponse.json();
+        setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Analisi con Gemini...' } : x));
+
+        const finalResult = await analyzeVideoWithFileApi(effectiveApiKey, item.subjectType, uri, { extractFormulas: item.extractFormulas });
+
+        setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Estrazione concetti chiave...' } : x));
         
-        // Extract Key Concepts for Academic Progression
-        setProgress("Estrazione concetti chiave...");
         let keyConcepts: string[] = [];
         try {
           keyConcepts = await extractKeyConcepts(effectiveApiKey, finalResult.notes);
@@ -275,39 +295,45 @@ export default function App() {
           console.error("Key concepts extraction failed:", e);
         }
 
-        // Save to history
         const newItem: HistoryItem = {
-          id: Date.now().toString(),
-          name: file.name,
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: item.file.name,
           date: new Date().toLocaleString(),
           result: finalResult,
           chatHistory: [],
           keyConcepts
         };
-        setActiveHistoryId(newItem.id);
-        const updatedHistory = [newItem, ...history].slice(0, 10);
-        setHistory(updatedHistory);
-        
-        if (storageMode === 'browser') {
-          storage.set("LECTURE_LENS_HISTORY", updatedHistory);
-        } else if (diskHandle) {
-          // Update disk storage
-          try {
-            const writable = await diskHandle.createWritable();
-            await writable.write(JSON.stringify(updatedHistory));
-            await writable.close();
-          } catch (e) {
-            console.error("Errore salvataggio su disco:", e);
+
+        setHistory(prev => {
+          const updatedHistory = [newItem, ...prev].slice(0, 50);
+          if (storageMode === 'browser') {
+            storage.set("LECTURE_LENS_HISTORY", updatedHistory);
+          } else if (diskHandle) {
+            // Update disk storage
+            diskHandle.createWritable().then(async (writable: any) => {
+              await writable.write(JSON.stringify(updatedHistory));
+              await writable.close();
+            }).catch((e: any) => {
+              console.error("Errore salvataggio su disco:", e);
+            });
           }
+          return updatedHistory;
+        });
+
+        setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'completed', result: finalResult, progress: 'Completato' } : x));
+        
+        if (queue.length === 1) {
+          setResult(finalResult);
+          setActiveHistoryId(newItem.id);
         }
+
+      } catch (err: any) {
+        console.error(err);
+        setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'error', progress: err.message || "Errore" } : x));
       }
-    } catch (err: any) {
-      console.error(err);
-      setError(`Errore: ${err.message || "Analisi fallita"}`);
-    } finally {
-      setLoading(false);
-      setProgress("");
     }
+
+    setIsProcessingQueue(false);
   };
 
   const handleGenerateQuiz = async () => {
@@ -919,81 +945,130 @@ export default function App() {
                 </section>
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-black/40 dark:text-white/40">2. Carica il Video</h3>
-                  {file ? (
-                  <div className="space-y-4">
-                    <div className="relative rounded-3xl overflow-hidden bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 aspect-video">
-                      <video 
-                        ref={videoRef}
-                        src={videoUrl || ""} 
-                        controls 
-                        className="w-full h-full object-contain"
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-black/40 dark:text-white/40">2. Carica Video (Singolo o Multiplo)</h3>
+                  {queue.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-black/40 dark:text-white/40">Coda di Lavoro ({queue.length})</h3>
+                        <button 
+                          onClick={() => { setQueue([]); setFile(null); }}
+                          className="text-xs text-red-500 hover:text-red-600 font-medium"
+                        >
+                          Svuota Coda
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        {queue.map(item => (
+                          <div key={item.id} className="p-4 rounded-2xl border border-black/10 dark:border-white/10 bg-white/50 dark:bg-zinc-900/50 flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate dark:text-white">{item.file.name}</p>
+                                <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
+                                  {(item.file.size / (1024 * 1024)).toFixed(1)} MB
+                                </p>
+                              </div>
+                              <button 
+                                onClick={() => setQueue(q => q.filter(i => i.id !== item.id))}
+                                className="p-1.5 text-black/40 hover:text-red-500 dark:text-white/40 dark:hover:text-red-400 transition-colors"
+                                disabled={isProcessingQueue}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <select 
+                                value={item.subjectType}
+                                onChange={(e) => setQueue(q => q.map(i => i.id === item.id ? { ...i, subjectType: e.target.value as SubjectType } : i))}
+                                disabled={isProcessingQueue}
+                                className="text-xs bg-black/5 dark:bg-white/5 border-none rounded-lg px-2 py-1.5 dark:text-white outline-none"
+                              >
+                                {Object.entries(SUBJECT_CONFIG).map(([key, config]) => (
+                                  <option key={key} value={key}>{config.title}</option>
+                                ))}
+                              </select>
+                              
+                              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  checked={item.extractFormulas}
+                                  onChange={(e) => setQueue(q => q.map(i => i.id === item.id ? { ...i, extractFormulas: e.target.checked } : i))}
+                                  disabled={isProcessingQueue}
+                                  className="rounded border-black/20 dark:border-white/20 text-black dark:text-white focus:ring-black dark:focus:ring-white"
+                                />
+                                <span className="dark:text-white/80">Estrai Formule/Teoremi</span>
+                              </label>
+                            </div>
+                            
+                            {item.status !== 'pending' && (
+                              <div className="flex items-center gap-2 text-xs font-medium">
+                                {item.status === 'processing' && <span className="text-blue-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin"/> {item.progress}</span>}
+                                {item.status === 'completed' && <span className="text-green-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Completato</span>}
+                                {item.status === 'error' && <span className="text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {item.progress}</span>}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isProcessingQueue}
+                          className="flex-1 py-3 rounded-xl font-medium border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm dark:text-white"
+                        >
+                          Aggiungi Altri
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group relative border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer flex flex-col items-center justify-center gap-4 border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                    >
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        className="hidden" 
+                        accept="video/*"
+                        multiple
                       />
-                      <button 
-                        onClick={() => {
-                          setFile(null);
-                          setResult(null);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                        className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all"
-                        title="Rimuovi video"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium dark:text-white truncate px-4">{file.name}</p>
-                      <p className="text-sm text-black/40 dark:text-white/40 mt-1">
-                        {isLongVideo ? "Video ottimizzato: Campionamento attivo" : "Pronto per l'analisi"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="group relative border-2 border-dashed rounded-3xl p-12 transition-all cursor-pointer flex flex-col items-center justify-center gap-4 border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-                  >
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileChange} 
-                      className="hidden" 
-                      accept="video/*"
-                    />
-                    
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40">
-                      <Upload />
-                    </div>
+                      
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40">
+                        <Upload />
+                      </div>
 
-                    <div className="text-center">
-                      <p className="font-medium dark:text-white">Seleziona un video</p>
-                      <p className="text-sm text-black/40 dark:text-white/40 mt-1">
-                        MP4 (consigliato), MOV o AVI
-                      </p>
+                      <div className="text-center">
+                        <p className="font-medium dark:text-white">Seleziona uno o più video</p>
+                        <p className="text-sm text-black/40 dark:text-white/40 mt-1">
+                          MP4 (consigliato), MOV o AVI
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                 </section>
 
                 <button
-                  onClick={handleProcessVideo}
-                  disabled={!file || loading}
+                  onClick={handleProcessQueue}
+                  disabled={queue.length === 0 || isProcessingQueue}
                   className={cn(
                     "w-full py-4 rounded-2xl font-medium transition-all flex items-center justify-center gap-2",
-                    !file || loading 
+                    queue.length === 0 || isProcessingQueue 
                       ? "bg-black/5 dark:bg-white/5 text-black/20 dark:text-white/20 cursor-not-allowed" 
                       : "bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 active:scale-[0.98] shadow-xl shadow-black/10 dark:shadow-white/5"
                   )}
                 >
-                  {loading ? (
+                  {isProcessingQueue ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>{progress || "Elaborazione..."}</span>
+                      <span>Elaborazione Coda in corso...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5" />
-                      <span>Analizza Lezione</span>
+                      <span>{queue.length > 1 ? "Analizza Coda (Notturno)" : "Analizza Lezione"}</span>
                     </>
                   )}
                 </button>

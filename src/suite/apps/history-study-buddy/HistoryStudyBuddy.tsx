@@ -192,7 +192,7 @@ function HistoryStudyBuddyContent() {
 
   // Cleanup on unmount
   useEffect(() => {
-    const savedBg = storage.get('history_buddy_bg', null);
+    const savedBg = storage.get('HISTORY_BUDDY_BG', null);
     if (savedBg) setBackgroundImage(savedBg);
 
     return () => {
@@ -530,7 +530,7 @@ Personaggi: ${infographic?.key_figures.map(f => `${f.name} (${f.role})`).join(',
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setBackgroundImage(base64String);
-        storage.set('history_buddy_bg', base64String);
+        storage.set('HISTORY_BUDDY_BG', base64String);
       };
       reader.readAsDataURL(file);
     }

@@ -58,10 +58,18 @@ export const analyzeShortVideo = async (
 export const analyzeVideoWithFileApi = async (
   apiKey: string,
   subjectType: SubjectType,
-  fileUri: string
+  fileUri: string,
+  options?: { extractFormulas?: boolean }
 ): Promise<{ transcription: string; notes: string }> => {
   const ai = new GoogleGenAI({ apiKey });
   const config = SUBJECT_CONFIG[subjectType];
+
+  let promptText = config.notesPrompt;
+  if (options?.extractFormulas) {
+    promptText += `\n\nATTENZIONE: L'utente ha richiesto un'estrazione specializzata di FORMULE e TEOREMI. 
+Dedica una sezione specifica negli appunti intitolata "## Formule e Teoremi". 
+Trascrivi ogni formula matematica, fisica o chimica usando la sintassi LaTeX (es. $$ E = mc^2 $$) e fornisci una spiegazione dettagliata per ciascuna formula o teorema estratto.`;
+  }
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
@@ -74,7 +82,7 @@ export const analyzeVideoWithFileApi = async (
               fileUri: fileUri,
             },
           },
-          { text: config.notesPrompt },
+          { text: promptText },
         ],
       },
     ],
