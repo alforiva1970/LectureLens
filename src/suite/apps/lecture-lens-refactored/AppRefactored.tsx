@@ -20,7 +20,7 @@ import SetupWizard from '../../../components/SetupWizard';
 import { Footer } from '../../components/Footer';
 import TutorChat from '../../../components/TutorChat';
 
-export function LectureLensApp() {
+export function AppRefactored() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { state, refs, setters, handlers } = useLectureLensState();
@@ -234,4 +234,4 @@ export function LectureLensApp() {
   );
 }
 
-export default LectureLensApp;
+export default AppRefactored;

@@ -13,7 +13,6 @@ import { GoogleAIFileManager } from "@google/generative-ai/server";
 dotenv.config();
 
 const upload = multer({ storage: multer.memoryStorage() });
-const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY!);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,11 +31,17 @@ async function startServer() {
     }
 
     const fileType = await fileTypeFromBuffer(req.file.buffer);
-    if (!fileType || (!fileType.mime.startsWith("audio/") && !fileType.mime.startsWith("image/"))) {
+    if (!fileType || (!fileType.mime.startsWith("audio/") && !fileType.mime.startsWith("image/") && !fileType.mime.startsWith("video/"))) {
       return res.status(400).json({ error: "Formato file non valido" });
     }
 
     try {
+      const apiKey = req.headers["x-api-key"] || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(401).json({ error: "API key mancante" });
+      }
+      const fileManager = new GoogleAIFileManager(apiKey as string);
+
       // Save buffer to temporary file for upload
       const tempPath = path.join(os.tmpdir(), req.file.originalname);
       await require("fs").promises.writeFile(tempPath, req.file.buffer);

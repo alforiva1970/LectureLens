@@ -16,7 +16,7 @@ const BMC_URL = BMC_USERNAME.startsWith('http')
 
 export const Footer = ({ activeApp, className, compact }: FooterProps) => {
   const apps = [
-    { id: 'lecturelens', name: 'LectureLens', link: '/' },
+    { id: 'lecturelens', name: 'LectureLens', link: '/lecture-lens' },
     { id: 'history-study-buddy', name: 'History Study Buddy', link: '/history-study-buddy' },
     { id: 'siliceo-notes', name: 'Siliceo Notes', link: '/siliceo-notes' },
     { id: 'siliceo-research', name: 'Siliceo Research', link: '/siliceo-research' },

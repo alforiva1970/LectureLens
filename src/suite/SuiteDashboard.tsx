@@ -172,7 +172,7 @@ export const SuiteDashboard = () => {
             title="LectureLens" 
             description="L'app principale per l'analisi delle lezioni universitarie."
             icon={BookOpen}
-            link="/"
+            link="/lecture-lens"
           />
           <SuiteCard 
             title="History Study Buddy" 
