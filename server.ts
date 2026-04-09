@@ -8,6 +8,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
+import cors from "cors";
 
 dotenv.config();
 
@@ -16,7 +17,13 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
+
+  // Abilita CORS per permettere al frontend su Vercel di comunicare con questo backend su Railway
+  app.use(cors({
+    origin: true, // Permette qualsiasi origine temporaneamente, in produzione andrebbe ristretto al dominio Vercel
+    credentials: true
+  }));
 
   app.use(express.json({ limit: '50mb' }));
   app.use(cookieParser());

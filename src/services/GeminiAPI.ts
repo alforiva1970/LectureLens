@@ -82,7 +82,8 @@ export const uploadFileToGeminiBrowser = async (
 
     if (onProgress) onProgress(10);
 
-    const response = await fetch('/api/gemini/upload', {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+    const response = await fetch(`${backendUrl}/api/gemini/upload`, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
