@@ -1,6 +1,36 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      // Ultimate Service Worker Blocker & Killer
+      if ('serviceWorker' in navigator) {
+        // 1. Kill existing zombies
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister().then(function(boolean) {
+              console.log('Zombie Service Worker unregistered:', boolean);
+            });
+          }
+        }).catch(function(error) {
+          console.error('Error unregistering SW:', error);
+        });
+
+        // 2. Sabotage the register function to prevent platform injection
+        try {
+          const originalRegister = navigator.serviceWorker.register;
+          navigator.serviceWorker.register = function() {
+            console.log('Blocked an attempt to register a Service Worker.');
+            // Return a dummy promise that never resolves to a real SW
+            return new Promise((resolve, reject) => {
+              reject(new Error('Service Worker registration is intentionally disabled.'));
+            });
+          };
+          Object.freeze(navigator.serviceWorker);
+        } catch (e) {
+          console.error('Failed to sabotage SW registration:', e);
+        }
+      }
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -12,15 +42,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

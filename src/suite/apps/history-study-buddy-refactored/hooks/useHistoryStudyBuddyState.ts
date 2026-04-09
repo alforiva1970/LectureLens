@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
+import { uploadFileToGeminiBrowser } from '../../../../services/GeminiAPI';
 import { storage } from '../../../../lib/storage';
 import { InfographicData, ChatMessage } from '../types';
 
@@ -128,19 +129,8 @@ export function useHistoryStudyBuddyState() {
     setInfographic(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", audioBlob, "lecture.webm");
-
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Errore durante l'upload del file");
-      }
-
-      const { uri } = await uploadResponse.json();
+      const apiKey = process.env.GEMINI_API_KEY || '';
+      const uri = await uploadFileToGeminiBrowser(apiKey, new File([audioBlob], "lecture.webm", { type: "audio/webm" }));
 
       const model = "gemini-3-flash-preview";
       

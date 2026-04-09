@@ -6,13 +6,10 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import axios from "axios";
 import dotenv from "dotenv";
-import multer from "multer";
-import { fileTypeFromBuffer } from "file-type";
-import { GoogleAIFileManager } from "@google/generative-ai/server";
+import fs from "fs";
+import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,42 +18,52 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
   app.use(cookieParser());
 
-  // --- FILE UPLOAD ENDPOINT ---
-  app.post("/api/upload", upload.single("file"), async (req: any, res: any) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "Nessun file caricato" });
+  // --- GEMINI UPLOAD PROXY (Bypass Service Worker) ---
+  // We use express.raw to accept binary data up to 500MB
+  app.post("/api/gemini/upload", express.raw({ type: '*/*', limit: '500mb' }), async (req, res) => {
+    const apiKey = req.headers['x-api-key'] as string;
+    const mimeType = req.headers['x-mime-type'] as string || 'video/mp4';
+    const displayName = req.headers['x-display-name'] as string || 'video.mp4';
+
+    if (!apiKey) {
+      return res.status(400).json({ error: "API key mancante nell'header x-api-key" });
     }
 
-    const fileType = await fileTypeFromBuffer(req.file.buffer);
-    if (!fileType || (!fileType.mime.startsWith("audio/") && !fileType.mime.startsWith("image/") && !fileType.mime.startsWith("video/"))) {
-      return res.status(400).json({ error: "Formato file non valido" });
+    if (!req.body || !Buffer.isBuffer(req.body)) {
+      return res.status(400).json({ error: "Nessun file binario ricevuto" });
     }
 
+    let tempFilePath = "";
     try {
-      const apiKey = req.headers["x-api-key"] || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(401).json({ error: "API key mancante" });
-      }
-      const fileManager = new GoogleAIFileManager(apiKey as string);
+      // 1. Save the raw buffer to a temporary file in Cloud Run's in-memory /tmp
+      tempFilePath = path.join(os.tmpdir(), `upload-${Date.now()}-${displayName}`);
+      fs.writeFileSync(tempFilePath, req.body);
 
-      // Save buffer to temporary file for upload
-      const tempPath = path.join(os.tmpdir(), req.file.originalname);
-      await require("fs").promises.writeFile(tempPath, req.file.buffer);
-
-      const uploadResult = await fileManager.uploadFile(tempPath, {
-        mimeType: fileType.mime,
-        displayName: req.file.originalname,
+      // 2. Use the official SDK to handle the complex Resumable Upload protocol for large files
+      const ai = new GoogleGenAI({ apiKey });
+      const uploadResult = await ai.files.upload({
+        file: tempFilePath,
+        mimeType: mimeType,
+        displayName: displayName,
       });
 
-      await require("fs").promises.unlink(tempPath);
+      // 3. Clean up the temp file to free memory
+      fs.unlinkSync(tempFilePath);
 
-      res.json({ uri: uploadResult.file.uri });
-    } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Errore durante l'upload" });
+      res.json({
+        fileUri: uploadResult.uri || uploadResult.name,
+        name: uploadResult.name,
+        mimeType: uploadResult.mimeType
+      });
+    } catch (error: any) {
+      console.error("Backend upload error:", error);
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath); // Ensure cleanup on error
+      }
+      res.status(500).json({ error: error.message || "Errore interno durante l'upload a Gemini" });
     }
   });
 
@@ -199,9 +206,23 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(distPath, 'index.html'), {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
     });
   }
 

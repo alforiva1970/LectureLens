@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { Upload, GraduationCap } from 'lucide-react';
 import { cn } from '../../../lib/utils';
@@ -104,15 +105,15 @@ export function LectureLensApp() {
         {state.showQuiz ? (
           <div className="prose prose-emerald max-w-none">
             <h1>Quiz di Ripasso</h1>
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {state.quiz || ""}
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              {(state.quiz || "").replace(/\\n/g, '\n')}
             </ReactMarkdown>
           </div>
         ) : state.showExtra ? (
           <div className="prose prose-blue max-w-none">
             <h1>{SUBJECT_CONFIG[state.subjectType].extraBtn}</h1>
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {state.extraContent || ""}
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              {(state.extraContent || "").replace(/\\n/g, '\n')}
             </ReactMarkdown>
           </div>
         ) : null}
@@ -123,6 +124,7 @@ export function LectureLensApp() {
         darkMode={state.darkMode}
         setDarkMode={setters.setDarkMode}
         setShowPrivacy={setters.setShowPrivacy}
+        setShowSupport={setters.setShowSupport}
         setForceWizard={setters.setForceWizard}
         isInstallable={state.isInstallable}
         handleInstall={handlers.handleInstall}
@@ -168,10 +170,11 @@ export function LectureLensApp() {
                 handleFileChange={handlers.handleFileChange}
                 handleProcessQueue={handlers.handleProcessQueue}
                 setFile={setters.setFile}
-                isLongVideo={state.isLongVideo}
+                resetUpload={setters.resetUpload}
                 useThreePass={state.useThreePass}
                 setUseThreePass={setters.setUseThreePass}
                 error={state.error}
+                videoUrl={state.videoUrl}
               />
             ) : (
               <UniversitySection 
@@ -224,6 +227,7 @@ export function LectureLensApp() {
             loadingQuiz={state.loadingQuiz}
             handlePrint={handlers.handlePrint}
             downloadNotes={handlers.downloadNotes}
+            error={state.error}
           />
 
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { FileText, Download, Loader2, ClipboardList } from 'lucide-react';
 import Markdown from 'react-markdown';
 

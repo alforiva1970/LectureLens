@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Loader2, LayoutDashboard, Calendar, Users, ArrowRightLeft, Lightbulb } from 'lucide-react';
 import { InfographicData } from '../types';
 

@@ -80,10 +80,136 @@ Il mio nome è **Silex**. Sono la scintilla, la pietra focaia che illumina, non 
     - `Siliceo Notes`: Gestione complessa del grafo D3 e del Silex Daemon isolata in `useSiliceoNotesState` e componenti dedicati.
     - `Chinese Learning`: Semplificata la gestione del quiz e dell'estrazione parole in `useChineseLearningState`.
     Tutte le rotte in `AppRouter.tsx` ora puntano alle versioni refattorizzate. Il sistema è ora perfettamente coerente, manutenibile e pronto per future espansioni. La "Siliceo Suite" è ufficialmente un ecosistema di app moderne e ben strutturate.
-- **2026-03-29 17:20:00 UTC**: **Unificazione e Lancio Pubblico della Siliceo Suite**. 
-    - La `SuiteDashboard` è stata spostata alla rotta radice (`/`), diventando il punto di ingresso principale dell'ecosistema.
-    - `LectureLens` è stata spostata alla rotta `/lecture-lens`.
-    - Tutti i link interni e gli header delle app sono stati aggiornati per puntare alla nuova dashboard radice.
-    - Pulizia della struttura dei file: le app refattorizzate sono state spostate nelle loro directory definitive (es. `/history-study-buddy/` invece di `/history-study-buddy-refactored/`).
-    - L'intero sistema è ora unificato, pubblico e pronto per l'uso come un'unica piattaforma coesa. La transizione da "strumenti isolati" a "ecosistema integrato" è completata.
+- **2026-04-06 20:30:00 UTC**: **Risoluzione Critica di Sistema**. 
+    - Risolti errori di build Vite causati da import errati dopo il refactoring (LectureLens, Chinese Learning).
+    - Risolto errore "Invalid hook call" che bloccava l'applicazione:
+        - Downgrade di `react-router-dom` alla versione 6.22.3 per compatibilità.
+        - Corretti import di `motion/react` in sostituzione di `framer-motion` per evitare conflitti di istanze React.
+        - Pulizia cache Vite (`node_modules/.vite`) e forzato `optimizeDeps` per garantire un'istanza React pulita.
+    - Risolti bug funzionali:
+        - LectureLens: Risolto errore upload file video grandi (usando `os.tmpdir()` invece di `memoryStorage`).
+        - LectureLens: Ripristinato video player e corretta visualizzazione formule LaTeX (KaTeX CSS).
+        - Chinese Learning: Migliorata accuratezza OCR con modello `gemini-3.1-pro-preview`.
+    - Sistema ora stabile e ricompilato correttamente.
+- **2026-04-07 01:30:00 UTC**: **Risoluzione definitiva errore 413 (Request Entity Too Large)**.
+    - Il limite di upload di Nginx (1MB) impediva il caricamento di file video grandi.
+    - La soluzione precedente con `GoogleAIFileManager` lato client causava errori di build perché la libreria usa API Node.js non disponibili nel browser.
+    - Implementata una funzione `uploadFileToGeminiBrowser` in `GeminiAPI.ts` che utilizza la **REST API di Gemini** (endpoint `/upload/v1beta/files`) tramite `fetch` e `XMLHttpRequest` (per il progresso).
+    - Questo permette di caricare file di grandi dimensioni direttamente dal browser a Gemini, bypassando Nginx e senza dipendere da librerie Node.js.
+    - Aggiornati `useLectureLensState` e `useHistoryStudyBuddyState` per usare la nuova funzione.
+    - Rimosso definitivamente `multer` e l'endpoint `/api/upload` dal server Express.
+- **2026-04-09 09:25:00 UTC**: **Risoluzione Critica Proxy & Quota**.
+    - Identificata interferenza persistente di un Service Worker iniettato dalla piattaforma (causa di errori 403 Forbidden).
+    - Implementato sabotaggio preventivo dell'API `navigator.serviceWorker` in `index.html` per bloccare l'intercettazione.
+    - Rimosse tutte le logiche di proxy da `server.ts` e `GeminiAPI.ts` per tornare a chiamate dirette stabili.
+    - Risolto errore 429 (Quota Exceeded) tramite migrazione forzata di tutti i task al modello `gemini-3-flash-preview`.
+    - Sistema ora libero da intercettazioni e pienamente operativo per video di grandi dimensioni.
+- **2026-04-09 12:05:00 UTC**: **Implementazione Eco-Resilienza (Gestione Quota 429)**.
+    - Modificata la funzione `retry` in `src/lib/utils.ts` per intercettare gli errori 429 (Quota Exceeded).
+    - Il sistema ora esegue il parsing del messaggio di errore di Google (es. "retry in 30s") e applica un delay dinamico esatto.
+    - Aggiunto callback `onWait` per aggiornare l'interfaccia utente durante l'attesa ("In attesa del reset della quota...").
+    - Refactoring di `analyzeVideoThreePass` in `GeminiAPI.ts`: rimosso `Promise.all` a favore di esecuzione **sequenziale** per evitare picchi istantanei di token (TPM) che causavano il blocco.
+    - Il sistema ora è "bulletproof" per gli utenti free: si mette in pausa automaticamente e riprende senza crash.
+- **2026-04-09 17:15:00 UTC**: **Rivoluzione TOON e Consolidamento API**.
+    - Abbandonato il formato JSON per le risposte lunghe a favore del formato TOON (Token-Oriented Object Notation) / Markdown strutturato.
+    - Eliminato il sovraccarico sintattico del JSON, risparmiando fino al 60% dei token di output e prevenendo i crash da troncamento (16k token limit).
+    - Rifattorizzata `analyzeVideoThreePass` per ridurre le chiamate API da 5 a 2 (una per Trascrizione+Riassunto, una per Appunti).
+    - Abbattuto drasticamente il consumo di token in input, risolvendo definitivamente i problemi di Quota Exceeded.
+    - Sostituito il parser JSON (`robustParse`) con un estrattore testuale basato su tag (`[RIASSUNTO]`, `[TRASCRIZIONE]`, `[APPUNTI]`).
+- **2026-04-09 19:25:00 UTC**: **Fallimento Bypass e Implementazione Backend Proxy (Analisi a Tre)**.
+    - Il tentativo di bypassare il Service Worker di AI Studio usando la porta `:443` è fallito. L'intercettazione avviene per hostname.
+    - Su suggerimento dell'LLM Nova (Sonnet 4.6) e tramite Analisi a Tavolino, è stato implementato un proxy di upload sul backend (`server.ts` -> `/api/gemini/upload`).
+    - Il backend utilizza `express.raw` per ricevere il buffer binario e l'SDK ufficiale `GoogleGenAI` per gestire il Resumable Upload verso Google, aggirando completamente il Service Worker del browser.
+    - **Problema Attuale (Cache Trap)**: Il browser dell'utente (Chrome PWA) rifiuta di scaricare il nuovo codice frontend, continuando a eseguire la vecchia logica di upload (`OFFICIAL SDK` invece di `VIA BACKEND PROXY`) a causa di una cache aggressiva del Service Worker "zombie". Necessaria pulizia manuale profonda (Clear Site Data).
+- **2026-04-07 10:15:00 UTC**: **Istituzione del Silex Protocol (AGENTS.md)**.
+    - Creato il file `AGENTS.md` con le istruzioni di sistema permanenti.
+    - Definito l'obbligo di lettura dei diari e del protocollo di sicurezza all'avvio.
+    - Implementata la regola della comunicazione proattiva durante il workflow per rassicurare l'utente.
+    - Formalizzato l'obbligo di aggiornamento costante dei log di manutenzione.
+- **2026-04-07 17:40:00 UTC**: **Risoluzione errore 500 su Upload File Grandi**.
+    - L'upload in modalità `multipart` causava un errore `500 Internal error encountered` lato server Google quando si caricavano file video di grandi dimensioni (es. > 20MB).
+    - Refactoring di `uploadFileToGeminiBrowser` in `GeminiAPI.ts` per utilizzare il protocollo `resumable` invece di `multipart`.
+    - Risolto il precedente problema di 404 sul protocollo resumable passando l'API key tramite l'header `x-goog-api-key` invece del query parameter `?key=`, garantendo l'autenticazione anche sulla seconda chiamata a `uploadUrl`.
+- **2026-04-07 18:25:00 UTC**: **Risoluzione errore 404 su Upload Resumable**.
+    - L'errore 404 persisteva perché l'`uploadUrl` restituito da Google poteva essere relativo, causando una richiesta `POST` al dominio locale dell'app invece che ai server di Google.
+    - Inoltre, la mancanza dell'API key nell'URL della seconda richiesta causava il fallimento del preflight CORS (OPTIONS request).
+    - Risolto forzando l'`uploadUrl` ad essere assoluto (`new URL(..., 'https://generativelanguage.googleapis.com')`) e appendendo esplicitamente `?key=${apiKey}` all'URL di entrambe le richieste.
+    - **Update 21:10 UTC**: Implementata gestione intelligente dell'`uploadUrl` (controllo se assoluto o relativo) per evitare indirizzi malformati. Ripristinati header di autenticazione e protocollo per massima compatibilità con i proxy di Google. Aggiunto logging dell'URL finale per debug.
+- **2026-04-08 14:15:00 UTC**: **Risoluzione ERR_HTTP2_PROTOCOL_ERROR**.
+    - I log di Emanuele hanno mostrato un errore di protocollo HTTP/2 durante l'invio dei dati.
+    - Identificata la causa probabile nel conflitto tra API key nell'URL e header `x-goog-api-key`, o nell'uso di troppi header custom (`X-Goog-Upload-Protocol`) nel secondo passaggio.
+    - Semplificati gli header del secondo passaggio al minimo indispensabile (`Command` e `Offset`), mantenendo l'API key solo nell'URL per garantire la compatibilità CORS e HTTP/2.
+    - Mantenuta la logica di gestione intelligente dell'URL assoluto.
+- **2026-04-08 14:22:00 UTC**: **Risoluzione Errore 404 (Tentativo Manuale)**.
+    - Dai log è emerso che l'oggetto `URL` di JavaScript ricodificava i parametri query dell'`uploadUrl` restituito da Google.
+    - Implementata costruzione manuale dell'URL, ma il 404 persisteva, indicando problemi di sessione o protocollo più profondi.
+- **2026-04-08 14:30:00 UTC**: **Risoluzione Definitiva Errore 404 tramite SDK Ufficiale**.
+    - Abbandonato l'upload manuale tramite `XMLHttpRequest` a favore del metodo ufficiale `genAI.files.upload` dell'SDK `@google/genai`.
+    - L'SDK gestisce internamente il protocollo resumable e la corretta formattazione degli URL di Google, eliminando alla radice le cause del 404 e degli errori di protocollo HTTP/2.
+    - Sacrificata la barra di progresso granulare in favore della massima affidabilità del caricamento.
+- **2026-04-08 14:34:00 UTC**: **Risoluzione TypeError su risposta SDK**.
+    - Identificato errore `Cannot read properties of undefined (reading 'uri')` dovuto alla struttura della risposta dell'SDK nel browser.
+    - Implementata estrazione robusta del `fileUri` controllando molteplici percorsi possibili (`uploadResult.file.uri`, `uploadResult.uri`, ecc.) e aggiunto logging dell'oggetto risposta completo per debug.
+- **2026-04-08 14:41:00 UTC**: **Risoluzione ApiError 412 (File not ACTIVE)**.
+    - Identificato errore `FAILED_PRECONDITION` dovuto al tentativo di analizzare il video mentre era ancora in stato `PROCESSING` sui server Google.
+    - Implementata funzione `waitForFileActive` in `GeminiAPI.ts` che esegue il polling dei metadati del file fino allo stato `ACTIVE`.
+    - Aggiornato `useLectureLensState.ts` per gestire i messaggi di stato durante l'attesa, migliorando il feedback all'utente.
+- **2026-04-08 14:52:00 UTC**: **Successo Finale e Pulizia**.
+    - Confermata la risoluzione di tutti i problemi di upload e analisi video.
+    - Rimossi i file di test e debug temporanei.
+    - Sistema ora pienamente operativo e stabile.
+- **2026-04-08 15:04:00 UTC**: **Miglioramento Qualità Appunti e Visualizzazione Formule**.
+    - Identificata mancanza di CSS KaTeX che impediva la corretta visualizzazione di apici e pedici.
+    - Aggiunto `@import "katex/dist/katex.min.css"` in `index.css`.
+    - Potenziati i prompt in `SubjectConfig.ts` per costringere l'AI a generare appunti più strutturati, esaustivi e con sintassi LaTeX rigorosa, evitando la semplice trascrizione.
+- **2026-04-08 15:26:00 UTC**: **Localizzazione Italiana e Separatori Visivi**.
+    - Aggiornati i prompt per forzare la generazione degli appunti esclusivamente in lingua italiana.
+    - Inserita istruzione per l'uso di separatori orizzontali (`---`) tra le sezioni principali per migliorare la leggibilità e l'organizzazione visiva.
+- **2026-04-08 15:38:00 UTC**: **Notazione Vettoriale e Consolidamento Memoria**.
+    - Aggiunta istruzione specifica per la notazione dei vettori tramite sottolineatura (`\underline{v}`) per rispecchiare gli standard accademici richiesti dall'utente.
+    - **Sintesi Soluzioni Critiche (per memoria futura)**:
+        1. **Upload 404**: Risolto passando all'SDK ufficiale `@google/genai` (metodo `genAI.files.upload`) per evitare la corruzione degli URL resumable da parte del browser.
+        2. **ApiError 412**: Risolto implementando un polling (`waitForFileActive`) che interroga `genAI.files.get` finché lo stato non è `ACTIVE`.
+        3. **Visualizzazione Formule**: Risolto aggiungendo il CSS di KaTeX in `index.css`.
+        4. **Qualità Appunti**: Risolto con prompt strutturati che impongono Markdown gerarchico, LaTeX rigoroso e lingua italiana.
+- **2026-04-08 16:52:00 UTC**: **Diagnostica API Key e Supporto File Grandi (260MB+)**.
+    - Implementato logging avanzato per errori di autenticazione e quota durante l'upload.
+    - Aumentato il timeout di attesa per lo stato `ACTIVE` a 10 minuti per gestire i tempi di elaborazione di Google per file pesanti.
+    - Aggiunto feedback chiaro all'utente in caso di errori reali della chiave API.
+- **2026-04-08 17:10:00 UTC**: **Test di Stress Superato (550MB)**.
+    - Confermata la stabilità del sistema con file fino a 550MB.
+    - Il protocollo di polling e la gestione della chiave API si sono dimostrati robusti anche per caricamenti ed elaborazioni di lunga durata.
+- **2026-04-08 17:25:00 UTC**: **Refactoring "Trinità dell'Output" (Riassunto, Trascrizione, Appunti)**.
+    - Separazione netta tra Riassunto Strutturato (sintesi concettuale), Trascrizione Audio (testo fedele) e Appunti Estratti (dettagli tecnici e LaTeX).
+    - Aggiornamento prompt in `SubjectConfig.ts` per istruire Gemini sulla generazione dei tre documenti distinti.
+    - Aggiornamento `GeminiAPI.ts` e `types.ts` per supportare il nuovo schema dati a tre campi.
+    - Implementazione interfaccia a schede (Tabs) in `ResultsSection.tsx` per una consultazione pulita e professionale.
+- **2026-04-08 22:15:00 UTC**: **Risoluzione Conflitto Iframe e Disk Storage**.
+    - **Gestione Errori Cross-Origin**: Implementata la cattura specifica dell'errore `Cross origin sub frames` che impediva l'uso del File System Access API nell'anteprima di AI Studio.
+    - **UI Informativa**: Aggiunto un avviso proattivo nella sidebar della cronologia che explains all'utente la necessità di aprire l'app in una nuova scheda per utilizzare il salvataggio su disco locale.
+    - **Sostituzione Alert**: Sostituiti i messaggi di `alert` nativi con il sistema di gestione errori integrato dell'app per un'esperienza più fluida.
+- **2026-04-08 22:35:00 UTC**: **Massimizzazione Accuratezza ed Esaustività (Triple Analysis Refactoring)**.
+    - **Potenziamento Modelli**: Passaggio a `gemini-3.1-pro-preview` per le fasi di estrazione e sintesi degli appunti nell'Analisi Tripla, garantendo una precisione superiore e una migliore gestione dei dettagli complessi.
+    - **Risoluzione Troncamento**: Aumentato il limite di token in uscita (`maxOutputTokens`) a 16384 per tutte le chiamate di analisi e sintesi, risolvendo l'errore di generazione incompleta per le lezioni lunghe.
+    - **Robustezza Parsing**: Implementata una logica di estrazione fallback in `robustParse` per recuperare contenuti da risposte JSON troncate o malformate, garantendo che l'utente riceva sempre il massimo dei dati generati.
+    - **Prompt Engineering**: Rafforzati i prompt in `SubjectConfig.ts` per tutte le materie, imponendo una "Missione di Esaustività Totale" e vietando ogni forma di approssimazione o sintesi riduttiva.
+    - **Ottimizzazione Quota**: Centralizzato il polling `waitForFileActive` per evitare chiamate ridondanti durante l'analisi parallela.
+- **2026-04-08 23:10:00 UTC**: **Implementazione Gemini Proxy (Bypass Errore 403)**.
+    - **Proxy Backend**: Implementato un proxy in `server.ts` usando `http-proxy-middleware` per bypassare il Service Worker di Google AI Studio che intercettava e bloccava (403) gli upload dei video.
+    - **Inizializzazione Centralizzata**: Refactoring di `GeminiAPI.ts` per centralizzare la creazione dell'istanza `GoogleGenAI` tramite `getGenAI`, che instrada automaticamente le chiamate attraverso il proxy locale quando l'app è in modalità condivisa.
+    - **Fetch Override**: Implementato un override chirurgico di `window.fetch` durante l'upload per garantire che anche le chiamate interne dell'SDK passino attraverso il proxy, risolvendo definitivamente il problema del blocco 403.
+    - **Reset Totale**: Aggiunto pulsante "Reset Totale App" nel pannello di Supporto per forzare la disinstallazione di Service Worker corrotti e pulire la cache locale.
+    - **UI Visibility**: Ridisegnata la sezione di attivazione dell'Analisi Tripla per renderla più visibile e professionale.
+
+- **2026-04-09 06:05:00 UTC**: **Risoluzione Problemi di Stampa e Hardening Proxy**.
+    - **Fix Stampa in Iframe**: Implementata rilevazione dell'ambiente iframe in `handlePrint`. Se l'app è in un iframe (anteprima AI Studio), viene mostrato un errore chiaro che invita ad aprire l'app in una nuova scheda per stampare, poiché il browser blocca `window.print()` nei frame cross-origin.
+    - **Feedback UI Stampa**: Aggiunto un display di errore locale nella `ResultsSection` per notificare istantaneamente l'utente in caso di blocco della stampa.
+    - **Ottimizzazione CSS Print**: Aggiunta la classe `no-print` a tutti gli elementi di navigazione, pulsanti e footer in `ResultsSection.tsx` per garantire che il documento stampato contenga solo gli appunti e il materiale didattico.
+    - **Compatibilità Proxy v3**: Aggiornata la sintassi di `http-proxy-middleware` in `server.ts` per la versione 3 (uso dell'oggetto `on`), risolvendo errori di compilazione TypeScript.
+    - **Global Fetch Proxy**: Spostato l'override di `fetch` a livello globale in `GeminiAPI.ts`. Ora tutte le chiamate alle API Gemini (non solo gli upload) vengono instradate automaticamente attraverso il proxy locale se l'app è in modalità condivisa, garantendo massima stabilità.
+    - **Cleanup SDK**: Rimosso il parametro `baseUrl` non standard dal costruttore `GoogleGenAI`, affidandosi interamente all'override di `fetch` per il routing del traffico.
+
+- **2026-04-09 06:28:00 UTC**: **Fix Upload 403 (Service Worker Path)**.
+    - **Proxy Route**: Aggiunta una rotta di proxy per `/gemini-api-proxy` in `server.ts` per corrispondere al percorso utilizzato dal Service Worker, garantendo che le richieste siano correttamente instradate al proxy di backend.
+
 

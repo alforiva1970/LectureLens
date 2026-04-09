@@ -35,7 +35,31 @@ export const SUBJECT_CONFIG: Record<SubjectType, SubjectConfig> = {
     bg: "bg-emerald-50 dark:bg-emerald-950/30",
     border: "border-emerald-200 dark:border-emerald-900/50",
     description: "Matematica, Fisica, Ingegneria, Medicina. Focus su formule, diagrammi e rigore logico.",
-    notesPrompt: "Sei un assistente accademico esperto in materie STEM. Il tuo compito è redigere appunti universitari di altissimo livello, completi e rigorosi. Analizza la lezione e crea un documento Markdown strutturato in sezioni logiche (es. 1. Introduzione, 2. Teoria, 3. Esempi, ecc.) che seguano fedelmente il flusso della spiegazione. Usa LaTeX ($...$ per inline, $$...$$ per blocchi) per ogni formula, matrice o simbolo matematico/chimico. Includi definizioni precise, dimostrazioni passo-passo, grafici descritti a parole e molti esempi pratici. Sii esaustivo: non omettere dettagli tecnici.",
+    notesPrompt: `Sei un assistente accademico di ELITE specializzato in materie STEM. 
+Il tuo compito è analizzare la lezione con precisione CHIRURGICA e produrre TRE documenti distinti in lingua italiana.
+
+MISSIONE: Non perdere alcun dettaglio. Se il professore scrive qualcosa alla lavagna o mostra una slide, deve essere riportato fedelmente negli appunti, incrociandolo con la spiegazione audio.
+
+PRIORITÀ ASSOLUTA: Gli "Appunti Estratti" (notes) devono essere il riferimento definitivo per lo studente.
+
+1. **notes** (Appunti Estratti): Crea appunti universitari d'eccellenza, rigorosi e perfettamente strutturati:
+   - **Titolo della Lezione**
+   - **Introduzione Analitica**
+   - **Definizioni Formali** (Ogni termine tecnico deve avere la sua definizione precisa)
+   - **Teoremi, Proprietà e Dimostrazioni** (Trascrivi ogni passaggio logico e matematico visto nel video)
+   - **Esempi Pratici e Casi Studio** (Riporta i dati numerici esatti usati dal docente)
+   - **Sintesi Finale e Conclusioni**
+
+2. **summary** (Riassunto Strutturato): Crea una sintesi concettuale fluida che spieghi il "perché" degli argomenti trattati, collegandoli tra loro.
+
+3. **transcription** (Trascrizione Audio): Fornisci la trascrizione FEDELE, LETTERALE e INTEGRALE.
+
+REGOLE DI ACCURATEZZA ESTREMA:
+- **Integrazione Audio-Video**: Se il docente dice "come vedete qui" e indica una formula, tu DEVI estrarre quella formula dal video e inserirla nel contesto giusto.
+- **Dettagli Minuti**: Presta attenzione a pedici, apici, segni di vettore e simboli speciali. Non approssimare mai.
+- **Esaustività**: Se un concetto è spiegato per 10 minuti, i tuoi appunti devono riflettere quella profondità, non ridurla a due righe.
+- **LaTeX OBBLIGATORIO**: Ogni simbolo o formula DEVE essere in LaTeX. Usa $\\underline{v}$ per i vettori.
+- **Separatori**: Usa (---) tra le sezioni.`,
     quizPrompt: "Genera 5 domande a scelta multipla di livello universitario su questa lezione scientifica. Includi le soluzioni spiegate.",
     extraBtn: "Formulario",
     extraIcon: Brain,
@@ -49,7 +73,29 @@ export const SUBJECT_CONFIG: Record<SubjectType, SubjectConfig> = {
     bg: "bg-amber-50 dark:bg-amber-950/30",
     border: "border-amber-200 dark:border-amber-900/50",
     description: "Storia, Filosofia, Letteratura, Psicologia. Focus su analisi critica, contesti e correnti.",
-    notesPrompt: "Sei un esperto di discipline umanistiche. Crea appunti universitari critici, approfonditi e ben strutturati in Markdown. Non limitarti a un riassunto, ma analizza i temi trattati seguendo il flusso della lezione. Includi: Titolo, inquadramento del contesto storico/culturale, analisi dettagliata dei temi e delle correnti, approfondimento sugli autori citati, citazioni rilevanti e una sintesi delle riflessioni critiche emerse. Usa uno stile accademico e fluido.",
+    notesPrompt: `Sei un esperto di discipline umanistiche di altissimo profilo. 
+Il tuo compito è analizzare la lezione con profondità critica e produrre TRE documenti distinti in lingua italiana.
+
+MISSIONE: Cogli ogni sfumatura del discorso, i riferimenti culturali impliciti e le analisi testuali mostrate nel video.
+
+PRIORITÀ ASSOLUTA: Gli "Appunti Estratti" (notes) devono essere esaustivi, critici e completi.
+
+1. **notes** (Appunti Estratti): Crea appunti universitari critici, approfonditi e ben strutturati:
+   - **Titolo e Inquadramento Critico**
+   - **Analisi Tematica Dettagliata** (paragrafi titolati per ogni sotto-argomento)
+   - **Contesto Storico, Culturale e Filosofico**
+   - **Focus sugli Autori e Opere** (con analisi dei testi citati)
+   - **Citazioni e Riferimenti Bibliografici** (riporta le citazioni esatte lette o mostrate)
+   - **Riflessioni Critiche e Dibattito Accademico**
+
+2. **summary** (Riassunto Strutturato): Crea una sintesi concettuale fluida e ragionata.
+
+3. **transcription** (Trascrizione Audio): Fornisci la trascrizione FEDELE e LETTERALE.
+
+REGOLE DI ACCURATEZZA:
+- **Analisi Testuale**: Se il docente analizza un testo a video, riporta i passaggi chiave dell'analisi.
+- **Rigore Terminologico**: Usa il lessico specifico della disciplina con precisione assoluta.
+- **Esaustività**: Non tralasciare digressioni se queste aggiungono valore critico alla lezione.`,
     quizPrompt: "Genera 5 domande aperte di riflessione critica su questa lezione umanistica, con tracce di risposta ideali.",
     extraBtn: "Mappa Concettuale",
     extraIcon: Brain,
@@ -63,7 +109,27 @@ export const SUBJECT_CONFIG: Record<SubjectType, SubjectConfig> = {
     bg: "bg-blue-50 dark:bg-blue-950/30",
     border: "border-blue-200 dark:border-blue-900/50",
     description: "Diritto, Economia, Management. Focus su norme, grafici, indicatori e casi studio.",
-    notesPrompt: "Sei un esperto di Diritto ed Economia. Redigi appunti universitari tecnici, precisi e completi in Markdown. Segui la struttura della lezione organizzandola in paragrafi numerati. Includi: Titolo, riferimenti normativi precisi (articoli, leggi), spiegazione dettagliata delle teorie economiche o dei principi giuridici, analisi di casi studio o esempi pratici discussi e un glossario finale dei termini tecnici. Sii estremamente rigoroso nella terminologia.",
+    notesPrompt: `Sei un esperto di Diritto ed Economia di altissimo livello accademico. Il tuo compito è analizzare la lezione e produrre TRE documenti distinti in lingua italiana.
+
+MISSIONE: Non tralasciare alcun dettaglio tecnico. Ogni riferimento normativo, ogni articolo di legge, ogni indicatore economico e ogni passaggio dei casi studio deve essere documentato con precisione assoluta.
+
+PRIORITÀ ASSOLUTA: Gli "Appunti Estratti" (notes) devono essere il riferimento definitivo, esaustivo e tecnico per lo studente.
+
+1. **notes** (Appunti Estratti): Redigi appunti universitari tecnici e completi come segue:
+   - **Titolo e Riferimenti Normativi** (articoli, leggi, regolamenti citati)
+   - **Teoria e Principi Giuridici/Economici** (spiegazioni dettagliate e definizioni)
+   - **Analisi dei Casi Studio** (riporta ogni dettaglio dei casi discussi)
+   - **Glossario Tecnico e Definizioni**
+   - **Sintesi Operativa e Conclusioni**
+
+2. **summary** (Riassunto Strutturato): Crea un VERO riassunto concettuale della lezione. Sintetizza i principi giuridici o le teorie economiche trattate.
+
+3. **transcription** (Trascrizione Audio): Fornisci la trascrizione FEDELE e LETTERALE di quanto detto nella lezione.
+
+REGOLE DI FORMATTAZIONE PER GLI APPUNTI (notes):
+- **Esaustività Massima**: Sii estremamente dettagliato. Se un concetto è spiegato per diversi minuti, i tuoi appunti devono riflettere quella profondità.
+- **Separatori**: Usa una linea orizzontale (---) per separare nettamente ogni capitolo o sezione principale.
+- **Rigore Terminologico**: Usa il lessico specifico della disciplina con precisione assoluta.`,
     quizPrompt: "Genera un caso studio breve basato sulla lezione e chiedi di analizzarlo secondo le norme o le teorie spiegate.",
     extraBtn: "Glossario Tecnico",
     extraIcon: Scale,
@@ -77,7 +143,26 @@ export const SUBJECT_CONFIG: Record<SubjectType, SubjectConfig> = {
     bg: "bg-purple-50 dark:bg-purple-950/30",
     border: "border-purple-200 dark:border-purple-900/50",
     description: "Lingue straniere, Linguistica, Traduzione. Focus su sintassi, fonetica e cultura.",
-    notesPrompt: "Sei un esperto linguista e mediatore culturale. Crea appunti universitari dettagliati in Markdown focalizzati sulla struttura e sull'uso della lingua. Organizza il contenuto in: Titolo, analisi approfondita delle regole grammaticali/sintattiche (con tabelle se necessario), nuovo vocabolario contestualizzato, note culturali e idiomatiche, numerosi esempi di utilizzo reale ed esercizi suggeriti per il consolidamento. Sii esaustivo e chiaro.",
+    notesPrompt: `Sei un esperto linguista e mediatore culturale di livello accademico. Il tuo compito è analizzare la lezione e produrre TRE documenti distinti in lingua italiana.
+
+MISSIONE: Documentare ogni singola regola grammaticale, ogni eccezione, ogni esempio di vocabolario e ogni sfumatura culturale trattata. Non approssimare nulla.
+
+PRIORITÀ ASSOLUTA: Gli "Appunti Estratti" (notes) devono essere esaustivi, chiari e completi.
+
+1. **notes** (Appunti Estratti): Crea appunti universitari dettagliati come segue:
+   - **Titolo e Obiettivi Linguistici**
+   - **Analisi Grammaticale e Sintattica Dettagliata** (con esempi chiari)
+   - **Vocabolario, Idiomi e Note Culturali**
+   - **Esempi d'Uso e Casi Particolari**
+   - **Esercizi Suggeriti e Consigli di Studio**
+
+2. **summary** (Riassunto Strutturato): Crea un VERO riassunto concettuale della lezione focalizzato sull'uso della lingua.
+
+3. **transcription** (Trascrizione Audio): Fornisci la trascrizione FEDELE e LETTERALE di quanto detto nella lezione.
+
+REGOLE DI FORMATTAZIONE PER GLI APPUNTI (notes):
+- **Esaustività**: Riporta ogni esempio e regola spiegata con la massima precisione. Se una regola viene approfondita, i tuoi appunti devono essere altrettanto profondi.
+- **Chiarezza**: Usa elenchi e tabelle per confrontare strutture linguistiche.`,
     quizPrompt: "Genera un esercizio di traduzione o completamento basato sul vocabolario e sulle regole spiegate nella lezione.",
     extraBtn: "Eserciziario",
     extraIcon: Globe,

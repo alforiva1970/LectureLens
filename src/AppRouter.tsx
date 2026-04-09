@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LectureLensApp from './suite/apps/lecture-lens/LectureLensApp';
-import HistoryStudyBuddy from './suite/apps/history-study-buddy/HistoryStudyBuddyApp';
-import SiliceoNotes from './suite/apps/siliceo-notes/SiliceoNotesApp';
-import SiliceoResearch from './suite/apps/siliceo-research/SiliceoResearchApp';
+import HistoryStudyBuddy from './suite/apps/history-study-buddy-refactored/HistoryStudyBuddyApp';
+import SiliceoNotes from './suite/apps/siliceo-notes-refactored/SiliceoNotesApp';
+import SiliceoResearch from './suite/apps/siliceo-research-refactored/SiliceoResearchApp';
 import ChineseLearning from './suite/apps/chinese-learning/ChineseLearningApp';
 import { SuiteDashboard } from './suite/SuiteDashboard';
 

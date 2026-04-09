@@ -2,6 +2,7 @@ import {StrictMode, Component, ErrorInfo, ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import AppRouter from './AppRouter';
 import './index.css';
+import 'katex/dist/katex.min.css';
 
 class GlobalErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: {children: ReactNode}) {

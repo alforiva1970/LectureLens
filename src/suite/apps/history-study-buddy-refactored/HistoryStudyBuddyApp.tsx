@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 import { FileText, LayoutDashboard, BrainCircuit } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Footer } from '../../components/Footer';
