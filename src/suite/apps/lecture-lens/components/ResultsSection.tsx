@@ -188,7 +188,7 @@ export function ResultsSection({
                 </div>
               </div>
 
-              <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-8 flex-1 overflow-y-auto custom-scrollbar print-content">
                 {activeTab === 'notes' && isEditingNotes ? (
                   <textarea 
                     value={editedNotes}
@@ -197,7 +197,7 @@ export function ResultsSection({
                     placeholder="Modifica i tuoi appunti qui (supporta Markdown e LaTeX)..."
                   />
                 ) : (
-                  <div className="prose prose-emerald dark:prose-invert max-w-none text-black dark:text-white">
+                  <div className="prose prose-emerald dark:prose-invert max-w-none text-black dark:text-white print-content">
                     <ReactMarkdown 
                       remarkPlugins={[remarkMath, remarkGfm]} 
                       rehypePlugins={[rehypeKatex]}

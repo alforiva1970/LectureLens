@@ -116,6 +116,12 @@ export function LectureLensApp() {
               {(state.extraContent || "").replace(/\\n/g, '\n')}
             </ReactMarkdown>
           </div>
+        ) : state.result ? (
+          <div className="prose prose-emerald max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              {(state.result.notes || "").replace(/\\n/g, '\n')}
+            </ReactMarkdown>
+          </div>
         ) : null}
       </div>
 
