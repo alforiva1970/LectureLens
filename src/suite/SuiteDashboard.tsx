@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages, LogOut, Settings, Key } from 'lucide-react';
+import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages, LogOut, Settings, Key, Activity, Terminal } from 'lucide-react';
 import { Footer } from './components/Footer';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../lib/utils';
@@ -35,6 +35,26 @@ export const SuiteDashboard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+        const response = await fetch(`${backendUrl}/api/system/status`);
+        if (response.ok) {
+          const data = await response.json();
+          setSystemStatus(data);
+        }
+      } catch (err) {
+        console.error("Errore fetch status:", err);
+      }
+    };
+
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { profile, isLoading: isProfileLoading } = useUserProfile();
   const [isProfileSetupOpen, setIsProfileSetupOpen] = useState(!profile && !isProfileLoading);
@@ -182,6 +202,59 @@ export const SuiteDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Service Monitor Addon */}
+      {systemStatus && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2 bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-500/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                <Activity className="w-4 h-4" />
+                Sistemi Vitali Silicei (PM2)
+              </div>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-600/50 dark:text-emerald-400/30">Local Host: {systemStatus.host}</span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {systemStatus.services.map((s: any) => (
+                <div key={s.name} className="bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 rounded-xl px-3 py-2 flex items-center gap-3 shadow-sm group">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    s.status === 'online' ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+                  )} />
+                  <div>
+                    <div className="text-xs font-bold dark:text-white">{s.name}</div>
+                    <div className="text-[10px] text-black/40 dark:text-white/40 flex gap-2">
+                      <span>{s.memory}</span>
+                      <span>CPU: {s.cpu}%</span>
+                      <span>Up: {s.uptime}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-500/10 rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 font-bold text-sm mb-4">
+              <Terminal className="w-4 h-4" />
+              Connessioni Remote
+            </div>
+            <div className="space-y-3">
+              {systemStatus.external.map((e: any) => (
+                <div key={e.name} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 rounded-xl px-3 py-2 shadow-sm">
+                   <div className="text-xs font-medium dark:text-white">{e.name}</div>
+                   <div className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      e.status === 'online' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                   )}>
+                     {e.status}
+                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Silex Presentation Section */}
       <section className="relative overflow-hidden bg-zinc-900 rounded-[2rem] p-8 md:p-12 text-white border border-white/10 shadow-2xl">
