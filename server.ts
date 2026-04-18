@@ -19,9 +19,24 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
 
-  // Abilita CORS per permettere al frontend su Vercel di comunicare con questo backend su Railway
+  const ALLOWED_ORIGINS = [
+    'https://lecture-lens.vercel.app', // Frontend Vercel
+    'http://localhost:3000',           // Start dev locale
+    'http://localhost:5173',           // Vite dev locale
+  ];
+
+  // Abilita CORS restrittivo per permettere solo ai domini autorizzati di comunicare con questo backend
   app.use(cors({
-    origin: true, // Permette qualsiasi origine temporaneamente, in produzione andrebbe ristretto al dominio Vercel
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      // and requests from the allowed origins list or AI Studio preview
+      if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.run.app')) {
+        callback(null, true);
+      } else {
+        console.warn(`Tentativo di accesso CORS bloccato da origine: ${origin}`);
+        callback(new Error('CORS: Origine non autorizzata'));
+      }
+    },
     credentials: true
   }));
 

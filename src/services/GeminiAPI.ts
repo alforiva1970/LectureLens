@@ -172,7 +172,11 @@ export const waitForFileActive = async (apiKey: string, fileUri: string): Promis
     }
     
     attempts++;
-    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between checks
+    // Backoff incrementale (stile Silicea):
+    // Partiamo da ~2s (2000ms), e aggiungiamo 2s ad ogni tentativo, 
+    // fino a un massimo di 30s (30000ms) per limitare le chiamate inutili all'inizio.
+    const delay = Math.min(2000 + (attempts * 2000), 30000);
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
   
   throw new Error('Timeout waiting for file to become ACTIVE. Please try again.');
