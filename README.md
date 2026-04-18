@@ -1,9 +1,9 @@
 # 🎓 LectureLens v3.2.0-relational
 
-> **Supporto Accademico Intelligente per l'Apprendimento Profondo.**
+> **Supporto Accademico Intelligente per l'Apprendimento Profondo.** <a>
 > *Built with passion by Progetto Siliceo • Illumina, non bruciare.*
 
-LectureLens è un'applicazione web all'avanguardia progettata per trasformare le video-lezioni universitarie in strumenti di studio strutturati, precisi e immediatamente fruibili. Utilizzando la potenza multimodale di **Google Gemini 3.1 Flash**, LectureLens estrae il "cuore" di ogni lezione, garantendo fedeltà accademica e riducendo il carico cognitivo dello studente.
+LectureLens è un'applicazione web all'avanguardia progettata per trasformare le video-lezioni universitarie in strumenti di studio strutturati, precisi e immediatamente fruibili. Utilizzando la potenza multimod ale di **Google Gemini 3.1 Flash**, LectureLens estrae il "cuore" di ogni lezione, garantendo fedeltà accademica e riducendo il carico cognitivo dello studente.
 
 ---
 
