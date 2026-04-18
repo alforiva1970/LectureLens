@@ -81,7 +81,9 @@ const verifyFirebaseToken = async (req: express.Request, res: express.Response, 
       error.code === 'auth/argument-error' || 
       error.message?.includes('incorrect "aud"') ||
       error.code === 'app/invalid-credential' ||
-      error.message?.includes('service account')
+      error.message?.includes('service account') ||
+      error.message?.includes('Unable to detect a Project Id') ||
+      error.message?.includes('Project Id')
     );
     
     if (isCredentialError) {
