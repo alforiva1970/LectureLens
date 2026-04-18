@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Silex Diaries e protocolli (privacy)
+silex-diary.md
+dev-diary.md

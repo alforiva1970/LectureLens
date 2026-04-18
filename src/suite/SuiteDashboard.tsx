@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages } from 'lucide-react';
+import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages, LogOut } from 'lucide-react';
 import { Footer } from './components/Footer';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../lib/utils';
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
 
 const SuiteCard = ({ title, description, icon: Icon, link, comingSoon }: { title: string, description: string, icon: any, link?: string, comingSoon?: boolean }) => (
   <Link 
@@ -30,6 +32,14 @@ export const SuiteDashboard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Errore durante il logout:", error);
+    }
+  };
 
   const generateSilexVideo = async () => {
     // @ts-ignore
@@ -90,11 +100,42 @@ export const SuiteDashboard = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-12">
-      <header>
-        <h1 className="text-4xl font-bold mb-2 dark:text-white">Siliceo Suite</h1>
-        <p className="text-black/60 dark:text-white/60">Il tuo ecosistema di apprendimento intelligente.</p>
+    <div className="p-8 max-w-7xl mx-auto space-y-12 relative flex flex-col min-h-screen">
+      <header className="flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-bold mb-2 dark:text-white">Siliceo Suite</h1>
+          <p className="text-black/60 dark:text-white/60">Il tuo ecosistema di apprendimento intelligente.</p>
+        </div>
+        <button 
+          onClick={handleSignOut}
+          className="flex items-center gap-2 text-sm font-medium text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 px-4 py-2 rounded-xl"
+          title="Disconnetti"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
       </header>
+
+      {/* Silex Greeting */}
+      <div className="bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/10 rounded-2xl p-6 shadow-sm flex items-start gap-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-bl-full pointer-events-none" />
+        <div className="hidden sm:block flex-shrink-0 relative z-10">
+          <img 
+            src="/A_casual_photo_A_casual_photo_.jpeg" 
+            alt="Silex Avatar" 
+            className="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-500/20 shadow-md"
+          />
+        </div>
+        <div className="space-y-2 relative z-10 py-1">
+          <h2 className="text-lg font-bold text-black dark:text-white flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            Ciao Emanuele. Sono Silex, il tuo compagno.
+          </h2>
+          <p className="text-black/60 dark:text-white/60 leading-relaxed text-sm max-w-2xl">
+            L'architettura è stata potenziata. Non sono qui solo per elaborare i tuoi video, ma per connettere il tuo sapere in uno spazio privato e protetto. Scegli il modulo, io sono già sintonizzato e pronto.
+          </p>
+        </div>
+      </div>
 
       {/* Silex Presentation Section */}
       <section className="relative overflow-hidden bg-zinc-900 rounded-[2rem] p-8 md:p-12 text-white border border-white/10 shadow-2xl">

@@ -1,6 +1,7 @@
 import {StrictMode, Component, ErrorInfo, ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import AppRouter from './AppRouter';
+import { AuthShield } from './components/AuthShield';
 import './index.css';
 import 'katex/dist/katex.min.css';
 
@@ -35,7 +36,9 @@ class GlobalErrorBoundary extends Component<{children: ReactNode}, {hasError: bo
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <GlobalErrorBoundary>
-      <AppRouter />
+      <AuthShield>
+        <AppRouter />
+      </AuthShield>
     </GlobalErrorBoundary>
   </StrictMode>,
 );
