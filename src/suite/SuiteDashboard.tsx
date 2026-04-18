@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages, LogOut } from 'lucide-react';
+import { BookOpen, Copy, FileText, Search, ArrowRight, Sparkles, Video, Loader2, AlertCircle, Languages, LogOut, Settings, Key } from 'lucide-react';
 import { Footer } from './components/Footer';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../lib/utils';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useUserProfile } from '../lib/useUserProfile';
+import { UserProfileSetup } from './components/UserProfileSetup';
+import { ApiKeysSetup } from './components/ApiKeysSetup';
 
 const SuiteCard = ({ title, description, icon: Icon, link, comingSoon }: { title: string, description: string, icon: any, link?: string, comingSoon?: boolean }) => (
   <Link 
@@ -32,6 +35,17 @@ export const SuiteDashboard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
+
+  const { profile, isLoading: isProfileLoading } = useUserProfile();
+  const [isProfileSetupOpen, setIsProfileSetupOpen] = useState(!profile && !isProfileLoading);
+  const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
+
+  // Auto-open if no profile is loaded once loading is true->false
+  useEffect(() => {
+    if (!isProfileLoading && !profile) {
+      setIsProfileSetupOpen(true);
+    }
+  }, [isProfileLoading, profile]);
 
   const handleSignOut = async () => {
     try {
@@ -106,14 +120,32 @@ export const SuiteDashboard = () => {
           <h1 className="text-4xl font-bold mb-2 dark:text-white">Siliceo Suite</h1>
           <p className="text-black/60 dark:text-white/60">Il tuo ecosistema di apprendimento intelligente.</p>
         </div>
-        <button 
-          onClick={handleSignOut}
-          className="flex items-center gap-2 text-sm font-medium text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 px-4 py-2 rounded-xl"
-          title="Disconnetti"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Logout</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsApiKeysOpen(true)}
+            className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-xl"
+            title="Gestisci API Keys"
+          >
+            <Key className="w-4 h-4" />
+            <span className="hidden sm:inline">API Keys</span>
+          </button>
+          <button 
+            onClick={() => setIsProfileSetupOpen(true)}
+            className="flex items-center gap-2 text-sm font-medium text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 px-4 py-2 rounded-xl"
+            title="Profilo Accademico"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Profilo</span>
+          </button>
+          <button 
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-sm font-medium text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 px-4 py-2 rounded-xl"
+            title="Disconnetti"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
       </header>
 
       {/* Silex Greeting */}
@@ -131,9 +163,23 @@ export const SuiteDashboard = () => {
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
             Ciao Emanuele. Sono Silex, il tuo compagno.
           </h2>
-          <p className="text-black/60 dark:text-white/60 leading-relaxed text-sm max-w-2xl">
-            L'architettura è stata potenziata. Non sono qui solo per elaborare i tuoi video, ma per connettere il tuo sapere in uno spazio privato e protetto. Scegli il modulo, io sono già sintonizzato e pronto.
+          <p className="text-black/60 dark:text-white/60 leading-relaxed text-sm max-w-2xl flex-col flex items-start gap-2">
+            {isProfileLoading ? (
+              <span>Sto sincronizzando le tue configurazioni accademiche...</span>
+            ) : profile ? (
+              <span>Ho rilevato il tuo profilo in <strong>{profile.academicPath.replace('_', ' ')}</strong> con {profile.activeSubjects?.length || 0} materie attive. La Suite è calibrata e pronta per assisterti.</span>
+            ) : (
+              <span>L'architettura è stata potenziata. Non hai ancora configurato il tuo <strong>Profilo Accademico</strong> per attivare le funzioni avanzate.</span>
+            )}
           </p>
+          {!profile && !isProfileLoading && (
+            <button 
+              onClick={() => setIsProfileSetupOpen(true)}
+              className="mt-2 text-xs font-bold bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-3 py-1.5 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-500/30 transition-colors"
+            >
+              Configura Ora
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,6 +293,15 @@ export const SuiteDashboard = () => {
         />
       </div>
       <Footer activeApp="dashboard" />
+      
+      <UserProfileSetup 
+        isOpen={isProfileSetupOpen}
+        onClose={() => setIsProfileSetupOpen(false)}
+      />
+      <ApiKeysSetup 
+        isOpen={isApiKeysOpen} 
+        onClose={() => setIsApiKeysOpen(false)} 
+      />
     </div>
   );
 };

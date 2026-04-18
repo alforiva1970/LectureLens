@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profilo studente globale per la Siliceo Suite",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Email dell'utente" },
+        "displayName": { "type": "string", "description": "Nome dell'utente" },
+        "academicPath": { "type": "string", "enum": ["scientific", "humanities", "law_economics", "languages"], "description": "Indirizzo accademico principale" },
+        "activeSubjects": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 100 },
+          "description": "Lista dei corsi attualmente seguiti"
+        },
+        "updatedAt": { "type": "string", "description": "Timestamp ISO dell'ultimo aggiornamento" }
+      },
+      "required": ["email", "academicPath"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "Documento del profilo dell'utente loggato, usa il UID di Firebase Auth come ID"
+    }
+  }
+}

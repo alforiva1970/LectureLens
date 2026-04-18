@@ -3,10 +3,13 @@ import { GoogleGenAI } from '@google/genai';
 import { uploadFileToGeminiBrowser } from '../../../../services/GeminiAPI';
 import { storage } from '../../../../lib/storage';
 import { InfographicData, ChatMessage } from '../types';
+import { useUserProfile } from '../../../../lib/useUserProfile';
+
+import { MODELS } from '../../../../constants/models';
 
 const getGenAI = () => {
   try {
-    const apiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || '';
+    const apiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || import.meta.env.VITE_GEMINI_API_KEY || '';
     return new GoogleGenAI({ apiKey });
   } catch (e) {
     console.error('Failed to initialize GoogleGenAI:', e);
@@ -17,6 +20,7 @@ const getGenAI = () => {
 const genAI = getGenAI();
 
 export function useHistoryStudyBuddyState() {
+  const { profile } = useUserProfile();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -129,13 +133,17 @@ export function useHistoryStudyBuddyState() {
     setInfographic(null);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY || '';
+      const apiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || '';
       const uri = await uploadFileToGeminiBrowser(apiKey, new File([audioBlob], "lecture.webm", { type: "audio/webm" }));
 
-      const model = "gemini-3-flash-preview";
+      const model = MODELS.FAST;
       
+      const academicContext = profile 
+        ? `L'utente è uno studente universitario dell'indirizzo ${profile.academicPath.replace('_', ' ')}. Usa un tono e un livello di approfondimento accademico adatto. Se la lezione cita collegamenti con le sue materie attive (${profile.activeSubjects.join(', ')}), evidenziali.`
+        : "Sei un assistente specializzato nello studio della storia per studenti universitari.";
+
       const promptText = `
-        Sei un assistente specializzato nello studio della storia per studenti delle superiori.
+        ${academicContext}
         Analizza l'audio fornito ${sessionImages.length > 0 ? 'e le immagini della lavagna/appunti allegate' : ''} e genera:
         1. Una trascrizione completa della lezione.
         2. Un riassunto strutturato in Markdown.

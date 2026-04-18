@@ -5,8 +5,10 @@ import { QueueItem, HistoryItem, Message } from '../types';
 import { SubjectType } from '../../../../constants/SubjectConfig';
 import { analyzeVideoWithFileApi, analyzeVideoThreePass, extractKeyConcepts, generateQuiz, generateExtra, uploadFileToGeminiBrowser } from '../../../../services/GeminiAPI';
 import * as UniversityService from '../../../../services/UniversityService';
+import { useUserProfile } from '../../../../lib/useUserProfile';
 
 export function useLectureLensState() {
+  const { profile } = useUserProfile();
   const [darkMode, setDarkMode] = useState(() => storage.get("LECTURE_LENS_DARK_MODE", false));
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
@@ -73,16 +75,29 @@ export function useLectureLensState() {
 
   const [showChat, setShowChat] = useState(false);
   const [subjectType, setSubjectType] = useState<SubjectType>('scientific');
+
+  // Sync profile to subjectType when profile loads
+  useEffect(() => {
+    if (profile?.academicPath) {
+      setSubjectType(profile.academicPath);
+    }
+  }, [profile]);
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const [userApiKey, setUserApiKey] = useState<string | null>(localStorage.getItem("LECTURE_LENS_KEY"));
+  
+  // Rimuovi la gestione specifica per LECTURE_LENS_KEY e passa al gestore unificato BYOK
   const [studyTime, setStudyTime] = useState(0);
   const [showBreakModal, setShowBreakModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const envApiKey = process.env.GEMINI_API_KEY;
-  const effectiveApiKey = (envApiKey && envApiKey !== "MY_GEMINI_API_KEY" && envApiKey !== "undefined") ? envApiKey : userApiKey;
+  const envApiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const byokKey = typeof localStorage !== 'undefined' ? localStorage.getItem("SILICEO_GOOGLE_KEY") : null;
+  const legacyKey = typeof localStorage !== 'undefined' ? localStorage.getItem("LECTURE_LENS_KEY") : null;
+  
+  // BYOK ha la priorità, poi env, infine il vecchio legacy
+  const effectiveApiKey = byokKey || (envApiKey && envApiKey !== "MY_GEMINI_API_KEY" && envApiKey !== "undefined" ? envApiKey : legacyKey);
 
   useEffect(() => {
     storage.set("LECTURE_LENS_DARK_MODE", darkMode);
@@ -510,7 +525,7 @@ ${result.notes}`,
       extraContent, loadingExtra, isEditingNotes, editedNotes, viewMode, selectedUniversity,
       isSyncingUni, uniCourses, uniLessons, selectedCourse, isAuthenticatedUni, showPrivacy,
       showTerms, showSupport, videoUrl, storageMode, diskHandle, showChat, subjectType,
-      deferredPrompt, isInstallable, userApiKey, studyTime, showBreakModal, effectiveApiKey
+      deferredPrompt, isInstallable, studyTime, showBreakModal, effectiveApiKey
     },
     refs: { fileInputRef, videoRef },
     setters: {
@@ -521,7 +536,7 @@ ${result.notes}`,
       setIsEditingNotes, setEditedNotes, setViewMode, setSelectedUniversity, setIsSyncingUni,
       setUniCourses, setUniLessons, setSelectedCourse, setIsAuthenticatedUni, setShowPrivacy,
       setShowTerms, setShowSupport, setStorageMode, setDiskHandle, setShowChat, setSubjectType,
-      setUserApiKey, setStudyTime, setShowBreakModal,
+      setStudyTime, setShowBreakModal,
       resetUpload: () => {
         setQueue([]);
         setFile(null);

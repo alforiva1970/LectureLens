@@ -41,18 +41,25 @@ export function LectureLensApp() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {!state.isInitializing && (!state.skipWizard && (!state.effectiveApiKey || state.effectiveApiKey === "MY_GEMINI_API_KEY") || state.forceWizard) && (
-          <SetupWizard 
-            onComplete={(key) => {
-              localStorage.setItem("LECTURE_LENS_KEY", key);
-              setters.setUserApiKey(key);
-              setters.setForceWizard(false);
-            }} 
-            onSkip={() => {
-              setters.setSkipWizard(true);
-              setters.setForceWizard(false);
-            }}
-          />
+        {!state.isInitializing && !state.effectiveApiKey && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white dark:bg-zinc-900 max-w-lg w-full p-8 rounded-3xl shadow-2xl border border-slate-200 dark:border-white/10 text-center">
+              <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-3xl">🔑</span>
+              </div>
+              <h2 className="text-2xl font-bold mb-4 dark:text-white">API Key Necessaria</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                Per elaborare video e lezioni, LectureLens richiede il motore di Google Gemini.
+                Torna alla Dashboard principale e inserisci la tua chiave nel pannello "API Keys".
+              </p>
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+              >
+                Torna alla Dashboard
+              </button>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 

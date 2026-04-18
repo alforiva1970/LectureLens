@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation Blueprint for UserProfile
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['email', 'academicPath']) &&
+             data.email is string && data.email.size() <= 100 &&
+             data.academicPath is string && data.academicPath.size() <= 50 &&
+             (data.academicPath == 'scientific' || data.academicPath == 'humanities' || data.academicPath == 'law_economics' || data.academicPath == 'languages') &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('activeSubjects' in data) || (data.activeSubjects is list && data.activeSubjects.size() <= 20)) &&
+             (!('updatedAt' in data) || data.updatedAt == request.time);
+    }
+
+    // users Collection
+    match /users/{userId} {
+      // 3. Path Variable Hardening
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false; // No list queries allowed for users to prevent enumeration
+
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
+        isValidUserProfile(incoming()) &&
+        // Exact keys check for create
+        incoming().keys().hasAll(['email', 'academicPath']) &&
+        incoming().keys().size() >= 2;
+
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
+        isValidUserProfile(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['academicPath', 'activeSubjects', 'displayName', 'updatedAt']) &&
+        incoming().email == existing().email; // email is immutable
+
+      allow delete: if false; // No deletion from client
+    }
+  }
+}

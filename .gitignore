@@ -10,3 +10,8 @@ coverage/
 # Silex Diaries e protocolli (privacy)
 silex-diary.md
 dev-diary.md
+
+# Firebase configs e chiavi
+firebase-applet-config.json
+firebase-debug.log
+.firebase/

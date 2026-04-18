@@ -1,11 +1,16 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { SubjectType, SUBJECT_CONFIG } from "../constants/SubjectConfig";
 import { retry } from "../lib/utils";
+import { MODELS } from "../constants/models";
+import { auth } from "../lib/firebase";
 
 // Centralized initialization for GoogleGenAI.
 const getGenAI = (apiKey: string) => {
+  // Se la chiave non viene passata, prova a prenderla dal localStorage (BYOK)
+  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
+  
   return new GoogleGenAI({ 
-    apiKey,
+    apiKey: finalKey,
     httpOptions: {
       baseUrl: 'https://generativelanguage.googleapis.com:443'
     }
@@ -18,6 +23,11 @@ export const analyzeShortVideo = async (
   videoFile: File,
   seed?: number
 ): Promise<{ transcription: string; notes: string }> => {
+  // RAM Hardening: Prevenire crash del browser per file troppo grandi (Base64 satura la memoria)
+  if (videoFile.size > 15 * 1024 * 1024) {
+    throw new Error("Il file supera i 15MB. L'analisi diretta da browser è disabilitata per prevenire crash di memoria. Per favore utilizza l'elaborazione standard protetta.");
+  }
+
   const ai = getGenAI(apiKey);
   const config = SUBJECT_CONFIG[subjectType];
 
@@ -29,7 +39,7 @@ export const analyzeShortVideo = async (
   });
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     contents: [
       {
         parts: [
@@ -71,26 +81,34 @@ export const uploadFileToGeminiBrowser = async (
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   const mimeType = file.type || "application/octet-stream";
+  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
   
   console.log('--- STARTING UPLOAD TO GEMINI (VIA BACKEND PROXY) ---');
   console.log('File:', file.name, 'Size:', file.size, 'Type:', mimeType);
   
   try {
-    if (!apiKey || apiKey.length < 10) {
+    if (!finalKey || finalKey.length < 10) {
       throw new Error("Chiave API non valida o troppo corta. Verifica la configurazione.");
     }
 
     if (onProgress) onProgress(10);
 
+    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+    const headers: Record<string, string> = {
+      'x-api-key': finalKey,
+      'x-mime-type': mimeType,
+      'x-display-name': file.name,
+      'Content-Type': mimeType // Important for express.raw
+    };
+    
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+
     const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     const response = await fetch(`${backendUrl}/api/gemini/upload`, {
       method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'x-mime-type': mimeType,
-        'x-display-name': file.name,
-        'Content-Type': mimeType // Important for express.raw
-      },
+      headers,
       body: file // The browser streams the File object automatically
     });
 
@@ -320,7 +338,7 @@ Trascrivi ogni formula matematica, fisica o chimica usando la sintassi LaTeX (es
   }
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: options?.model || "gemini-3-flash-preview",
+    model: options?.model || MODELS.FAST,
     contents: [
       {
         parts: [
@@ -374,7 +392,7 @@ export const analyzeVideoThreePass = async (
     ...options, 
     task: 'transcription_summary', 
     onStatusUpdate: undefined, 
-    model: "gemini-3-flash-preview" 
+    model: MODELS.FAST 
   });
   
   if (options?.onStatusUpdate) options.onStatusUpdate("Estrazione Appunti Dettagliati (2/2)...");
@@ -382,7 +400,7 @@ export const analyzeVideoThreePass = async (
     ...options, 
     task: 'notes', 
     onStatusUpdate: undefined, 
-    model: "gemini-3-flash-preview" 
+    model: MODELS.FAST 
   });
   
   if (options?.onStatusUpdate) options.onStatusUpdate("Analisi completata con successo.");
@@ -408,7 +426,7 @@ export const analyzeFramesInChunks = async (
     onProgress(`Analisi visiva profonda: ${Math.round((i / frames.length) * 100)}%`);
 
     const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: MODELS.FAST,
       contents: [
         {
           parts: [
@@ -440,7 +458,7 @@ export const generateNotesLongVideo = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     contents: [
       {
         parts: [
@@ -484,7 +502,7 @@ export const generateQuiz = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.quizPrompt}` }
     ],
@@ -502,7 +520,7 @@ export const generateExtra = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     contents: [
       { text: `Basandoti su questi appunti:\n\n${notes}\n\nEsegui questo compito: ${config.extraPrompt}` }
     ],
@@ -519,7 +537,7 @@ export const extractKeyConcepts = async (
 
   try {
     const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: MODELS.FAST,
       contents: [
         { text: `Basandoti su questi appunti, estrai una lista di massimo 10 concetti chiave (parole o brevi frasi) che rappresentano il nucleo della lezione. Rispondi solo con un array JSON di stringhe.\n\nAppunti:\n\n${notes}` }
       ],
@@ -554,7 +572,7 @@ export const extractChineseWords = async (
   });
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     contents: [
       {
         parts: [
@@ -604,7 +622,7 @@ export const askTutor = async (
   const config = SUBJECT_CONFIG[subjectType];
 
   const chat = ai.chats.create({
-    model: "gemini-3-flash-preview",
+    model: MODELS.FAST,
     config: {
       systemInstruction: `${config.tutorPersona}\n\nIl contesto della lezione è il seguente:\n\n${notes}`,
     },

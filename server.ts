@@ -9,15 +9,67 @@ import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import cors from "cors";
+import admin from "firebase-admin";
 
 dotenv.config();
+
+// Initialize Firebase Admin (Zero Trust Foundation)
+// In production, this uses GOOGLE_APPLICATION_CREDENTIALS automatically or default compute credentials.
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp();
+  } catch (error) {
+    console.error("Firebase Admin initialization error:", error);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// --- WHITELIST DEGLI UTENTI AUTORIZZATI ---
+// Identica alla whitelist nel client (AuthShield)
+const ALLOWED_EMAILS = [
+  'alforiva@gmail.com',    // Alfonso
+  'ema.riva2005@gmail.com' // Emanuele
+];
+
+// Funzione middleware per verificare il token Firebase JWT
+const verifyFirebaseToken = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "Accesso negato: Nessun token fornito." });
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const email = decodedToken.email;
+    
+    if (!email || !ALLOWED_EMAILS.includes(email)) {
+      return res.status(403).json({ error: "Accesso negato: Utente non autorizzato dalla Whitelist Server-side." });
+    }
+    
+    // Pass user info to the next handler
+    (req as any).user = decodedToken;
+    next();
+  } catch (error: any) {
+    if (process.env.NODE_ENV !== "production") {
+      // PER IL TESTING LOCALE / AI STUDIO
+      // Se non abbiamo un service account configurato e admin get down, permettiamo il test basato solo sull'header 
+      // (MAI USARE IN PRODUZIONE VERA, MA NECESSARIO PER L'ANTEPRIMA AI STUDIO SENZA CREDS)
+      if (error.code === 'app/no-credential' || error.message.includes('credential')) {
+        console.warn("WARNING: Firebase Admin credentials not found. Bypassing STRICT verification for local dev. This is unsafe for production.");
+        return next();
+      }
+    }
+    console.error("Token verification failed:", error);
+    return res.status(401).json({ error: "Accesso negato: Token invalido o scaduto." });
+  }
+};
+
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   const ALLOWED_ORIGINS = [
     'https://lecture-lens.vercel.app', // Frontend Vercel
@@ -44,8 +96,8 @@ async function startServer() {
   app.use(cookieParser());
 
   // --- GEMINI UPLOAD PROXY (Bypass Service Worker) ---
-  // We use express.raw to accept binary data up to 500MB
-  app.post("/api/gemini/upload", express.raw({ type: '*/*', limit: '500mb' }), async (req, res) => {
+  // We use express.raw to accept binary data up to 2048MB (2GB) for local testing
+  app.post("/api/gemini/upload", verifyFirebaseToken, express.raw({ type: '*/*', limit: '2048mb' }), async (req, res) => {
     const apiKey = req.headers['x-api-key'] as string;
     const mimeType = req.headers['x-mime-type'] as string || 'video/mp4';
     const displayName = req.headers['x-display-name'] as string || 'video.mp4';
@@ -65,9 +117,8 @@ async function startServer() {
       fs.writeFileSync(tempFilePath, req.body);
 
       // 2. Use the official SDK to handle the complex Resumable Upload protocol for large files
-      const ai = new GoogleGenAI({ apiKey });
-      const uploadResult = await ai.files.upload({
-        file: tempFilePath,
+      const fileManager = new GoogleAIFileManager(apiKey);
+      const uploadResult = await fileManager.uploadFile(tempFilePath, {
         mimeType: mimeType,
         displayName: displayName,
       });
@@ -76,9 +127,9 @@ async function startServer() {
       fs.unlinkSync(tempFilePath);
 
       res.json({
-        fileUri: uploadResult.uri || uploadResult.name,
-        name: uploadResult.name,
-        mimeType: uploadResult.mimeType
+        fileUri: uploadResult.file.uri,
+        name: uploadResult.file.name,
+        mimeType: uploadResult.file.mimeType
       });
     } catch (error: any) {
       console.error("Backend upload error:", error);

@@ -160,6 +160,30 @@ function HistoryStudyBuddyContent() {
 
         <Footer activeApp="history-study-buddy" />
       </div>
+
+      <AnimatePresence>
+        {!(typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : false) && !import.meta.env.VITE_GEMINI_API_KEY && (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'undefined' || process.env.GEMINI_API_KEY === 'MY_GEMINI_API_KEY') && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white max-w-lg w-full p-8 rounded-3xl shadow-2xl border border-slate-200 text-center">
+              <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-3xl">🔑</span>
+              </div>
+              <h2 className="text-2xl font-bold mb-4 text-slate-900">API Key Necessaria</h2>
+              <p className="text-slate-600 mb-8 leading-relaxed">
+                Per ricostruire la storia, il tuo Buddy ha bisogno del motore di Google Gemini.
+                Torna alla Dashboard principale e inserisci la tua chiave nel pannello "API Keys".
+              </p>
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-amber-500/20"
+              >
+                Torna alla Dashboard
+              </button>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
