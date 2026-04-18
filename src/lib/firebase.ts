@@ -3,39 +3,36 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // Fallback logic for local AI Studio preview vs Vercel Production
-let firebaseConfig: any = null;
-let firestoreDatabaseId: string = '(default)';
+// Webpack/Vite in AI Studio doesn't like dynamic require, so we import statically 
+// but use Vite env vars first.
+import aiStudioConfig from '../../firebase-applet-config.json';
 
-// 1. Try to load from secure Env vars first (Production / Vercel logic)
-if (import.meta.env.VITE_FIREBASE_API_KEY) {
-  firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  };
-  firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
-} else {
-  // 2. Fallback to AI Studio local config only if env vars are missing
-  // We use a try-catch for the import to avoid build errors on Vercel
-  try {
-    // Note: This is mainly for the AI Studio preview environment
-    // @ts-ignore
-    const aiStudioConfig = await import('../../firebase-applet-config.json');
-    firebaseConfig = aiStudioConfig.default || aiStudioConfig;
-    firestoreDatabaseId = firebaseConfig.firestoreDatabaseId || '(default)';
-  } catch (e) {
-    console.warn("Configurazione Firebase locale non trovata. Assicurati di aver impostato le Variabili d'Ambiente su Vercel.");
+let firebaseConfig;
+let firestoreDatabaseId;
+
+try {
+  // 1. Try to load from secure Env vars first (Production / Vercel logic as requested by Silicea)
+  if (import.meta.env.VITE_FIREBASE_API_KEY) {
+    firebaseConfig = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    };
+    firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
+  } else {
+    // 2. Fallback to AI Studio local config if env vars are missing
+    firebaseConfig = aiStudioConfig;
+    firestoreDatabaseId = aiStudioConfig.firestoreDatabaseId;
   }
+} catch (e) {
+  console.error("Firebase config load error:", e);
 }
 
 // Initialize Firebase
-if (!firebaseConfig) {
-  console.error("FATAL: Configurazione Firebase mancante. Imposta le variabili VITE_FIREBASE_* su Vercel o fornisci il file firebase-applet-config.json localmente.");
-}
-const app = initializeApp(firebaseConfig || { apiKey: 'missing', projectId: 'missing' });
+const app = initializeApp(firebaseConfig!);
 
 // Silex Note: In AI Studio, we MUST configure Firestore with the correct database ID
 // from the auto-provisioned config file to hit the right instance workspace.
