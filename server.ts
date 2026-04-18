@@ -95,9 +95,10 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
 
   const ALLOWED_ORIGINS = [
-    'https://lecture-lens.vercel.app', // Frontend Vercel
-    'http://localhost:3000',           // Start dev locale
-    'http://localhost:5173',           // Vite dev locale
+    'https://lecture-lens.vercel.app',       // Frontend Vercel (vecchio)
+    'https://lecture-lens-sandy.vercel.app', // Frontend Vercel (nuovo deployment)
+    'http://localhost:3000',                 // Start dev locale
+    'http://localhost:5173',                 // Vite dev locale
   ];
 
   // Abilita CORS restrittivo per permettere solo ai domini autorizzati di comunicare con questo backend
