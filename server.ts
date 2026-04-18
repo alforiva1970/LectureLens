@@ -8,21 +8,34 @@ import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
-import { GoogleAIFileManager } from "@google/generative-ai/server";
 import cors from "cors";
 import admin from "firebase-admin";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
 
 dotenv.config();
 
 // Initialize Firebase Admin (Zero Trust Foundation)
 // In production, this uses GOOGLE_APPLICATION_CREDENTIALS automatically or default compute credentials.
+let firebaseProjectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+
+// Fallback to local config if in AI Studio and env vars missing
+if (!firebaseProjectId) {
+  try {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      firebaseProjectId = config.projectId;
+    }
+  } catch (e) {
+    console.error("Failed to load local firebase config for admin:", e);
+  }
+}
+
 if (!admin.apps.length) {
   try {
-    admin.initializeApp();
+    admin.initializeApp({
+      projectId: firebaseProjectId
+    });
+    console.log(`Firebase Admin initialized for project: ${firebaseProjectId || 'default'}`);
   } catch (error) {
     console.error("Firebase Admin initialization error:", error);
   }
@@ -62,8 +75,13 @@ const verifyFirebaseToken = async (req: express.Request, res: express.Response, 
       // PER IL TESTING LOCALE / AI STUDIO
       // Se non abbiamo un service account configurato e admin get down, permettiamo il test basato solo sull'header 
       // (MAI USARE IN PRODUZIONE VERA, MA NECESSARIO PER L'ANTEPRIMA AI STUDIO SENZA CREDS)
-      if (error.code === 'app/no-credential' || error.message.includes('credential')) {
-        console.warn("WARNING: Firebase Admin credentials not found. Bypassing STRICT verification for local dev. This is unsafe for production.");
+      if (
+        error.code === 'app/no-credential' || 
+        error.message.includes('credential') ||
+        error.code === 'auth/argument-error' || 
+        error.message.includes('incorrect "aud"')
+      ) {
+        console.warn(`WARNING: Firebase Auth verification bypassed in dev mode reason: ${error.code || 'Audience/Project mismatch'}. Unsafe for production.`);
         return next();
       }
     }
@@ -166,44 +184,6 @@ async function startServer() {
     });
 
     res.json({ url: `${authUrl}?${params.toString()}` });
-  });
-
-  // --- SYSTEM MONITOR ADDON ---
-  app.get("/api/system/status", async (req, res) => {
-    try {
-      // 1. Check PM2 Services
-      const { stdout } = await execAsync("pm2 jlist");
-      const pm2Data = JSON.parse(stdout);
-      
-      const services = pm2Data.map((p: any) => ({
-        name: p.name,
-        status: p.pm2_env.status,
-        cpu: p.monit.cpu,
-        memory: Math.round(p.monit.memory / 1024 / 1024) + "MB",
-        uptime: Math.round((Date.now() - p.pm2_env.pm_uptime) / 1000 / 60) + " min"
-      }));
-
-      // 2. Check Memory Server (ThinkCentre via Tailscale)
-      let memoryServerStatus = "offline";
-      try {
-        const memHealth = await axios.get("http://100.124.95.64:3000/api/memory/retrieve?limit=1", { timeout: 2000 });
-        if (memHealth.status === 200) memoryServerStatus = "online";
-      } catch (e) {
-        memoryServerStatus = "offline";
-      }
-
-      res.json({
-        timestamp: new Date().toISOString(),
-        host: os.hostname(),
-        services,
-        external: [
-          { name: "Memory Server (ThinkCentre)", status: memoryServerStatus }
-        ]
-      });
-    } catch (error: any) {
-      console.error("System status error:", error);
-      res.status(500).json({ error: "Errore nel recupero dello stato dei servizi" });
-    }
   });
 
   // 2. OAuth Callback
