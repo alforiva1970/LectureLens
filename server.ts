@@ -8,8 +8,13 @@ import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
 import cors from "cors";
 import admin from "firebase-admin";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 dotenv.config();
 

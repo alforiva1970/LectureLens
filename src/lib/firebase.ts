@@ -32,7 +32,10 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 }
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig!);
+if (!firebaseConfig) {
+  console.error("FATAL: Configurazione Firebase mancante. Imposta le variabili VITE_FIREBASE_* su Vercel o fornisci il file firebase-applet-config.json localmente.");
+}
+const app = initializeApp(firebaseConfig || { apiKey: 'missing', projectId: 'missing' });
 
 // Silex Note: In AI Studio, we MUST configure Firestore with the correct database ID
 // from the auto-provisioned config file to hit the right instance workspace.
