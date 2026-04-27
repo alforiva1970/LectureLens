@@ -105,7 +105,7 @@ export const uploadFileToGeminiBrowser = async (
       headers['Authorization'] = `Bearer ${idToken}`;
     }
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+    const backendUrl = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
     const response = await fetch(`${backendUrl}/api/gemini/upload`, {
       method: 'POST',
       headers,
