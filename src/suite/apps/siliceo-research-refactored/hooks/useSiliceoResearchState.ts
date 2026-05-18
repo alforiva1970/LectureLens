@@ -3,18 +3,20 @@ import { GoogleGenAI } from "@google/genai";
 import { storage } from '../../../../lib/storage';
 import { ResearchResult } from '../types';
 
-// Initialize Gemini API
-const getGenAI = () => {
+// Initialize Gemini API (lazy — non all'import del modulo)
+let _ai: GoogleGenAI | null = null;
+const getAI = (): GoogleGenAI | null => {
+  if (_ai) return _ai;
   try {
-    const apiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || '';
-    return new GoogleGenAI({ apiKey });
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+    if (!apiKey) return null;
+    _ai = new GoogleGenAI({ apiKey });
+    return _ai;
   } catch (e) {
     console.error('Failed to initialize GoogleGenAI:', e);
     return null;
   }
 };
-
-const ai = getGenAI();
 
 export function useSiliceoResearchState() {
   const [query, setQuery] = useState('');
@@ -27,8 +29,10 @@ export function useSiliceoResearchState() {
   const handleSearch = useCallback(async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
     const searchQuery = customQuery || query;
-    if (!searchQuery.trim() || isSearching || !ai) return;
-
+    if (!searchQuery.trim() || isSearching) return;
+    const ai = getAI();
+    if (!ai) return;
+    
     setIsSearching(true);
     try {
       // Stage 1: Search and get raw content

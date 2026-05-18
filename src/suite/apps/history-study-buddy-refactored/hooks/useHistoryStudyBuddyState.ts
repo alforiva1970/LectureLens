@@ -6,18 +6,21 @@ import { InfographicData, ChatMessage } from '../types';
 import { useUserProfile } from '../../../../lib/useUserProfile';
 
 import { MODELS } from '../../../../constants/models';
+import { getKey } from '../../../../lib/secureStorage';
 
-const getGenAI = () => {
+let _genAIInstance: GoogleGenAI | null = null;
+const getGenAI = (): GoogleGenAI | null => {
+  if (_genAIInstance) return _genAIInstance;
   try {
-    const apiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || import.meta.env.VITE_GEMINI_API_KEY || '';
-    return new GoogleGenAI({ apiKey });
+    const apiKey = getKey('GOOGLE_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
+    if (!apiKey) return null;
+    _genAIInstance = new GoogleGenAI({ apiKey });
+    return _genAIInstance;
   } catch (e) {
     console.error('Failed to initialize GoogleGenAI:', e);
     return null;
   }
 };
-
-const genAI = getGenAI();
 
 export function useHistoryStudyBuddyState() {
   const { profile } = useUserProfile();
@@ -124,7 +127,9 @@ export function useHistoryStudyBuddyState() {
   };
 
   const processAudio = async () => {
-    if (!audioBlob || !genAI) return;
+    if (!audioBlob) return;
+    const genAI = getGenAI();
+    if (!genAI) return;
 
     setIsProcessing(true);
     setError(null);
@@ -223,7 +228,9 @@ export function useHistoryStudyBuddyState() {
   };
 
   const handleSendMessage = async () => {
-    if (!currentMessage.trim() || !infographic?.primary_figure || isChatLoading || !genAI) return;
+    if (!currentMessage.trim() || !infographic?.primary_figure || isChatLoading) return;
+    const genAI = getGenAI();
+    if (!genAI) return;
 
     const userMsg: ChatMessage = { role: 'user', text: currentMessage };
     setChatMessages(prev => [...prev, userMsg]);
