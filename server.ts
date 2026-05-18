@@ -7,11 +7,13 @@ import cookieParser from "cookie-parser";
 import axios from "axios";
 import dotenv from "dotenv";
 import fs from "fs";
+import { fileTypeFromFile } from 'file-type';
 import { GoogleGenAI } from "@google/genai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import cors from "cors";
 import admin from "firebase-admin";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
@@ -116,17 +118,22 @@ const verifyFirebaseToken = async (req: express.Request, res: express.Response, 
     next();
   } catch (error: any) {
     if (process.env.NODE_ENV !== "production") {
-      // PER IL TESTING LOCALE / AI STUDIO
-      // Se non abbiamo un service account configurato e admin get down, permettiamo il test basato solo sull'header 
-      // (MAI USARE IN PRODUZIONE VERA, MA NECESSARIO PER L'ANTEPRIMA AI STUDIO SENZA CREDS)
+      // Dev mode: richiede un header di bypass esplicito con chiave segreta
+      const devBypass = req.headers['x-dev-bypass'];
+      if (process.env.DEV_BYPASS_KEY && devBypass === process.env.DEV_BYPASS_KEY) {
+        console.warn('[DEV] Auth bypassed via X-Dev-Bypass header');
+        (req as any).user = { email: 'dev@local.host', uid: 'dev-bypass' };
+        return next();
+      }
+      // Se Firebase non è configurato o l'auth fallisce, logga e nega
       if (
         error.code === 'app/no-credential' || 
         error.message.includes('credential') ||
         error.code === 'auth/argument-error' || 
         error.message.includes('incorrect "aud"')
       ) {
-        console.warn(`WARNING: Firebase Auth verification bypassed in dev mode reason: ${error.code || 'Audience/Project mismatch'}. Unsafe for production.`);
-        return next();
+        console.error('[DEV] Firebase Auth fallita (no config o token errato). Imposta DEV_BYPASS_KEY nel .env e usa X-Dev-Bypass per bypassare.');
+        return res.status(401).json({ error: 'Firebase Auth fallita. Usa header X-Dev-Bypass se in test mode con DEV_BYPASS_KEY impostato.' });
       }
     }
     console.error("Token verification failed:", error);
@@ -166,14 +173,34 @@ async function startServer() {
   // Inizia la sincronizzazione della memoria (Diari)
   await syncDiaries();
 
-  // Configurazione Multer per carichi pesanti (Disk Storage in /tmp)
+  // Configurazione Multer per carichi pesanti (Disk Storage)
+  const uploadDir = path.join(os.tmpdir(), "lecturelens-uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
   const upload = multer({ 
-    dest: os.tmpdir(),
+    dest: uploadDir,
     limits: { fileSize: 2048 * 1024 * 1024 } // 2GB
   });
 
+  // --- RATE LIMITERS ---
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Troppe richieste. Riprova più tardi.' },
+  });
+
+  const uploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { error: 'Limite upload raggiunto (5/ora).' },
+  });
+
+  app.use('/api/', globalLimiter);
+
   // --- GEMINI UPLOAD PROXY (Bypass Service Worker) ---
-  app.post("/api/gemini/upload", verifyFirebaseToken, upload.single('file'), async (req, res) => {
+  app.post("/api/gemini/upload", uploadLimiter, verifyFirebaseToken, upload.single('file'), async (req, res) => {
     const apiKey = req.headers['x-api-key'] as string;
     const mimeType = req.headers['x-mime-type'] as string || req.file?.mimetype || 'video/mp4';
     const displayName = req.headers['x-display-name'] as string || req.file?.originalname || 'video.mp4';
@@ -189,10 +216,29 @@ async function startServer() {
 
     const tempFilePath = req.file.path;
     try {
+      // Magic Bytes validation (SECURITY_PROTOCOL §1)
+      const detectedType = await fileTypeFromFile(tempFilePath);
+      const ALLOWED_MIME_TYPES = [
+        'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+        'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm',
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        'application/pdf', 'text/plain',
+      ];
+
+      if (!detectedType || !ALLOWED_MIME_TYPES.includes(detectedType.mime)) {
+        fs.unlinkSync(tempFilePath);
+        return res.status(400).json({
+          error: `Tipo file non supportato: ${detectedType?.mime || 'sconosciuto'}. Tipi permessi: video, audio, immagini, PDF.`
+        });
+      }
+
+      // Aggiorna mimeType con quello reale (sicuro)
+      const safeMimeType = detectedType.mime;
+
       // 2. Use the official SDK to handle the complex Resumable Upload protocol for large files
       const fileManager = new GoogleAIFileManager(apiKey);
       const uploadResult = await fileManager.uploadFile(tempFilePath, {
-        mimeType: mimeType,
+        mimeType: safeMimeType,
         displayName: displayName,
       });
 
@@ -214,8 +260,8 @@ async function startServer() {
   });
 
   // Middleware di parsing globale spostati DOPO la rotta di upload per evitare 413
-  app.use(express.json({ limit: '2048mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '2048mb' }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // --- UNIVERSITY OAUTH & API PROXY ---
 
@@ -272,12 +318,16 @@ async function startServer() {
       });
 
       // Send success message and close popup
+      const targetOrigin = (process.env.NODE_ENV === 'production')
+        ? 'https://lecture-lens.vercel.app'
+        : 'http://localhost:5173';
+
       res.send(`
         <html>
           <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0fdf4;">
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'UNI_AUTH_SUCCESS' }, '*');
+                window.opener.postMessage({ type: 'UNI_AUTH_SUCCESS' }, '${targetOrigin}');
                 window.close();
               } else {
                 window.location.href = '/';

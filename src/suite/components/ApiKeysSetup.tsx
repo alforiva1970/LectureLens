@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Save, X, Eye, EyeOff, Bot } from 'lucide-react';
 import { MODELS } from '../../constants/models';
+import { storeKey, getKey, removeKey } from '../../lib/secureStorage';
 
 export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const [googleKey, setGoogleKey] = useState('');
@@ -18,9 +19,9 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   useEffect(() => {
     // Carica chiavi dal localStorage se esistono
     if (isOpen) {
-      setGoogleKey(localStorage.getItem('SILICEO_GOOGLE_KEY') || '');
-      setOpenAiKey(localStorage.getItem('SILICEO_OPENAI_KEY') || '');
-      setAnthropicKey(localStorage.getItem('SILICEO_ANTHROPIC_KEY') || '');
+      setGoogleKey(getKey('GOOGLE_KEY') || '');
+      setOpenAiKey(getKey('OPENAI_KEY') || '');
+      setAnthropicKey(getKey('ANTHROPIC_KEY') || '');
       setSelectedModel(localStorage.getItem('SILICEO_SELECTED_MODEL') || MODELS.FAST);
       setSavedStatus(false);
     }
@@ -31,15 +32,15 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   const handleSave = () => {
     setIsSaving(true);
     
-    // Save to localStorage
-    if (googleKey) localStorage.setItem('SILICEO_GOOGLE_KEY', googleKey);
-    else localStorage.removeItem('SILICEO_GOOGLE_KEY');
+    // Save to secure storage
+    if (googleKey) storeKey('GOOGLE_KEY', googleKey);
+    else removeKey('GOOGLE_KEY');
       
-    if (openAiKey) localStorage.setItem('SILICEO_OPENAI_KEY', openAiKey);
-    else localStorage.removeItem('SILICEO_OPENAI_KEY');
+    if (openAiKey) storeKey('OPENAI_KEY', openAiKey);
+    else removeKey('OPENAI_KEY');
       
-    if (anthropicKey) localStorage.setItem('SILICEO_ANTHROPIC_KEY', anthropicKey);
-    else localStorage.removeItem('SILICEO_ANTHROPIC_KEY');
+    if (anthropicKey) storeKey('ANTHROPIC_KEY', anthropicKey);
+    else removeKey('ANTHROPIC_KEY');
       
     localStorage.setItem('SILICEO_SELECTED_MODEL', selectedModel);
       

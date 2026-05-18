@@ -3,6 +3,7 @@ import { SubjectType, SUBJECT_CONFIG } from "../constants/SubjectConfig";
 import { retry } from "../lib/utils";
 import { MODELS } from "../constants/models";
 import { auth } from "../lib/firebase";
+import { getKey } from "../lib/secureStorage";
 
 export const getActiveModel = () => {
     return (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_SELECTED_MODEL') : null) || MODELS.FAST;
@@ -10,8 +11,8 @@ export const getActiveModel = () => {
 
 // Centralized initialization for GoogleGenAI.
 const getGenAI = (apiKey: string) => {
-  // Se la chiave non viene passata, prova a prenderla dal localStorage (BYOK)
-  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
+  // Se la chiave non viene passata, prova a prenderla dal localStorage (BYOK) - modificato per usare secureStorage
+  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? getKey('GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
   
   return new GoogleGenAI({ 
     apiKey: finalKey,
@@ -85,7 +86,7 @@ export const uploadFileToGeminiBrowser = async (
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   const mimeType = file.type || "application/octet-stream";
-  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
+  const finalKey = apiKey || (typeof localStorage !== 'undefined' ? getKey('GOOGLE_KEY') : null) || import.meta.env.VITE_GEMINI_API_KEY || '';
   
   console.log('--- STARTING UPLOAD TO GEMINI (VIA BACKEND PROXY) ---');
   console.log('File:', file.name, 'Size:', file.size, 'Type:', mimeType);

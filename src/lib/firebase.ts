@@ -2,11 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Fallback logic for local AI Studio preview vs Vercel Production
-// Webpack/Vite in AI Studio doesn't like dynamic require, so we import statically 
-// but use Vite env vars first.
-import aiStudioConfig from '../../firebase-applet-config.json';
-
 let firebaseConfig;
 let firestoreDatabaseId;
 
@@ -22,10 +17,13 @@ try {
       appId: import.meta.env.VITE_FIREBASE_APP_ID,
     };
     firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
-  } else {
-    // 2. Fallback to AI Studio local config if env vars are missing
+  } else if (import.meta.env.DEV || window.location.hostname === 'localhost') {
+    // 2. Solo in sviluppo locale o AI Studio: fallback al file config
+    const aiStudioConfig = (await import('../../firebase-applet-config.json')).default;
     firebaseConfig = aiStudioConfig;
     firestoreDatabaseId = aiStudioConfig.firestoreDatabaseId;
+  } else {
+    throw new Error('Firebase non configurato. Imposta VITE_FIREBASE_* env vars.');
   }
 } catch (e) {
   console.error("Firebase config load error:", e);
