@@ -113,7 +113,7 @@ export const uploadFileToGeminiBrowser = async (
     const formData = new FormData();
     formData.append('file', file);
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+    const backendUrl = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
     const response = await fetch(`${backendUrl}/api/gemini/upload`, {
       method: 'POST',
       headers,
