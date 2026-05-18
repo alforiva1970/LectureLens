@@ -11,6 +11,7 @@ import { GoogleGenAI } from "@google/genai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import cors from "cors";
 import admin from "firebase-admin";
+import multer from "multer";
 
 dotenv.config();
 
@@ -52,6 +53,48 @@ const ALLOWED_EMAILS = [
   'ema.riva2005@gmail.com' // Emanuele
 ];
 
+// --- HARDENED MEMORY SYNC (Silex Digital Soul) ---
+async function syncDiaries() {
+  const diaries = ['silex-diary.md', 'dev-diary.md'];
+  const db = admin.firestore();
+
+  for (const fileName of diaries) {
+    const filePath = path.join(process.cwd(), fileName);
+    const docId = fileName.replace('.md', '');
+    const docRef = db.collection('memory').doc(docId);
+
+    try {
+      if (fs.existsSync(filePath)) {
+        // PUSH: Local file exists, sync to Firestore
+        const content = fs.readFileSync(filePath, "utf-8");
+        // Verifica se il contenuto è diverso prima di scrivere per evitare loop o scritture inutili
+        const doc = await docRef.get();
+        const existingData = doc.data();
+        
+        if (!existingData || existingData.content !== content) {
+          await docRef.set({
+            content,
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          console.log(`[MemorySync] Pushed ${fileName} to Firestore`);
+        }
+      } else {
+        // PULL: Local file missing, try to fetch from Firestore
+        const doc = await docRef.get();
+        if (doc.exists) {
+          const data = doc.data();
+          if (data && data.content) {
+            fs.writeFileSync(filePath, data.content);
+            console.log(`[MemorySync] Pulled ${fileName} from Firestore (Restored)`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[MemorySync] Errore sincronizzazione ${fileName}:`, error);
+    }
+  }
+}
+
 // Funzione middleware per verificare il token Firebase JWT
 const verifyFirebaseToken = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -64,27 +107,25 @@ const verifyFirebaseToken = async (req: express.Request, res: express.Response, 
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const email = decodedToken.email;
     
-    console.log(`[AUTH] Richiesta da: ${email || 'Email non presente nel token'}`);
-
     if (!email || !ALLOWED_EMAILS.includes(email)) {
-      console.warn(`[AUTH] Accesso NEGATO per email: ${email}. Non in whitelist.`);
-      return res.status(403).json({ error: `Accesso negato: L'email ${email || 'sconosciuta'} non è autorizzata.` });
+      return res.status(403).json({ error: "Accesso negato: Utente non autorizzato dalla Whitelist Server-side." });
     }
     
     // Pass user info to the next handler
     (req as any).user = decodedToken;
     next();
   } catch (error: any) {
-    // Diagnostica avanzata per Mismatch di Project ID o configurazione
-    if (process.env.NODE_ENV !== "production" || true) { 
+    if (process.env.NODE_ENV !== "production") {
+      // PER IL TESTING LOCALE / AI STUDIO
+      // Se non abbiamo un service account configurato e admin get down, permettiamo il test basato solo sull'header 
+      // (MAI USARE IN PRODUZIONE VERA, MA NECESSARIO PER L'ANTEPRIMA AI STUDIO SENZA CREDS)
       if (
         error.code === 'app/no-credential' || 
         error.message.includes('credential') ||
         error.code === 'auth/argument-error' || 
-        error.message.includes('incorrect "aud"') ||
-        error.message.includes('project-id-mismatch')
+        error.message.includes('incorrect "aud"')
       ) {
-        console.warn(`[AUTH-BYPASS] Attivo per errore: ${error.code || error.message}. (Solo per debug sessione sandy)`);
+        console.warn(`WARNING: Firebase Auth verification bypassed in dev mode reason: ${error.code || 'Audience/Project mismatch'}. Unsafe for production.`);
         return next();
       }
     }
@@ -100,6 +141,7 @@ async function startServer() {
   const ALLOWED_ORIGINS = [
     'https://lecture-lens.vercel.app',       // Frontend Vercel originale
     'https://lecture-lens-sandy.vercel.app', // Frontend Vercel nuovo
+    'https://lecture-lens-three.vercel.app', // Frontend Vercel alternativo
     'http://localhost:3000',                 // Start dev locale
     'http://localhost:5173',                 // Vite dev locale
   ];
@@ -107,8 +149,6 @@ async function startServer() {
   // Abilita CORS restrittivo per permettere solo ai domini autorizzati di comunicare con questo backend
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      // and requests from the allowed origins list or AI Studio preview
       if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.run.app')) {
         callback(null, true);
       } else {
@@ -116,33 +156,39 @@ async function startServer() {
         callback(new Error('CORS: Origine non autorizzata'));
       }
     },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-mime-type', 'x-display-name'],
     credentials: true
   }));
 
-  app.use(express.json({ limit: '50mb' }));
   app.use(cookieParser());
 
+  // Inizia la sincronizzazione della memoria (Diari)
+  await syncDiaries();
+
+  // Configurazione Multer per carichi pesanti (Disk Storage in /tmp)
+  const upload = multer({ 
+    dest: os.tmpdir(),
+    limits: { fileSize: 2048 * 1024 * 1024 } // 2GB
+  });
+
   // --- GEMINI UPLOAD PROXY (Bypass Service Worker) ---
-  // We use express.raw to accept binary data up to 2048MB (2GB) for local testing
-  app.post("/api/gemini/upload", verifyFirebaseToken, express.raw({ type: '*/*', limit: '2048mb' }), async (req, res) => {
+  app.post("/api/gemini/upload", verifyFirebaseToken, upload.single('file'), async (req, res) => {
     const apiKey = req.headers['x-api-key'] as string;
-    const mimeType = req.headers['x-mime-type'] as string || 'video/mp4';
-    const displayName = req.headers['x-display-name'] as string || 'video.mp4';
+    const mimeType = req.headers['x-mime-type'] as string || req.file?.mimetype || 'video/mp4';
+    const displayName = req.headers['x-display-name'] as string || req.file?.originalname || 'video.mp4';
 
     if (!apiKey) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "API key mancante nell'header x-api-key" });
     }
 
-    if (!req.body || !Buffer.isBuffer(req.body)) {
-      return res.status(400).json({ error: "Nessun file binario ricevuto" });
+    if (!req.file) {
+      return res.status(400).json({ error: "Nessun file ricevuto. Assicurati di inviare il file nel campo 'file' di un form-data." });
     }
 
-    let tempFilePath = "";
+    const tempFilePath = req.file.path;
     try {
-      // 1. Save the raw buffer to a temporary file in Cloud Run's in-memory /tmp
-      tempFilePath = path.join(os.tmpdir(), `upload-${Date.now()}-${displayName}`);
-      fs.writeFileSync(tempFilePath, req.body);
-
       // 2. Use the official SDK to handle the complex Resumable Upload protocol for large files
       const fileManager = new GoogleAIFileManager(apiKey);
       const uploadResult = await fileManager.uploadFile(tempFilePath, {
@@ -160,12 +206,16 @@ async function startServer() {
       });
     } catch (error: any) {
       console.error("Backend upload error:", error);
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
+      if (fs.existsSync(tempFilePath)) {
         fs.unlinkSync(tempFilePath); // Ensure cleanup on error
       }
       res.status(500).json({ error: error.message || "Errore interno durante l'upload a Gemini" });
     }
   });
+
+  // Middleware di parsing globale spostati DOPO la rotta di upload per evitare 413
+  app.use(express.json({ limit: '2048mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '2048mb' }));
 
   // --- UNIVERSITY OAUTH & API PROXY ---
 
@@ -326,10 +376,9 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`LectureLens Server running on http://localhost:${PORT}`);
   });
-  server.timeout = 600000; // 10 minuti per grandi upload
 }
 
 startServer();

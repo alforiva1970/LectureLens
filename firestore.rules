@@ -9,9 +9,17 @@ service cloud.firestore {
 
     // Primitives
     function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email == 'alforiva@gmail.com' && request.auth.token.email_verified == true; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation Blueprint for Memory
+    function isValidMemory(data) {
+      return data.keys().hasAll(['content', 'lastUpdated']) &&
+             data.content is string && data.content.size() <= 1048576 &&
+             (data.lastUpdated is timestamp || data.lastUpdated is string);
+    }
 
     // Validation Blueprint for UserProfile
     function isValidUserProfile(data) {
@@ -42,6 +50,12 @@ service cloud.firestore {
         incoming().email == existing().email; // email is immutable
 
       allow delete: if false; // No deletion from client
+    }
+
+    // memory Collection
+    match /memory/{docId} {
+      allow get, list: if isAdmin();
+      allow write: if isAdmin() && isValidId(docId) && isValidMemory(incoming());
     }
   }
 }

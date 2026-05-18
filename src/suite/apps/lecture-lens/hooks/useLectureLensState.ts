@@ -154,85 +154,88 @@ export function useLectureLensState() {
     setIsProcessingQueue(true);
     setError(null);
 
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
-      if (item.status === 'completed') continue;
+    try {
+      for (let i = 0; i < queue.length; i++) {
+        const item = queue[i];
+        if (item.status === 'completed') continue;
 
-      setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'processing', progress: 'Caricamento 0%...' } : x));
+        setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'processing', progress: 'Caricamento 0%...' } : x));
 
-      try {
-        const uri = await uploadFileToGeminiBrowser(effectiveApiKey, item.file, (pct) => {
-          setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: `Caricamento ${pct}%...` } : x));
-        });
-
-        setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Analisi con Gemini...' } : x));
-
-        const finalResult = useThreePass 
-          ? await analyzeVideoThreePass(effectiveApiKey, item.subjectType, uri, { 
-              extractFormulas: item.extractFormulas,
-              onStatusUpdate: (status) => {
-                setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: status } : x));
-              }
-            })
-          : await analyzeVideoWithFileApi(effectiveApiKey, item.subjectType, uri, { 
-              extractFormulas: item.extractFormulas,
-              onStatusUpdate: (status) => {
-                setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: status } : x));
-              }
-            });
-
-        setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Estrazione concetti chiave...' } : x));
-        
-        let keyConcepts: string[] = [];
         try {
-          keyConcepts = await extractKeyConcepts(effectiveApiKey, finalResult.notes);
-        } catch (e) {
-          console.error("Key concepts extraction failed:", e);
-        }
+          const uri = await uploadFileToGeminiBrowser(effectiveApiKey, item.file, (pct) => {
+            setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: `Caricamento ${pct}%...` } : x));
+          });
 
-        const newItem: HistoryItem = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: item.file.name,
-          date: new Date().toLocaleString(),
-          result: finalResult,
-          chatHistory: [],
-          keyConcepts
-        };
+          setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Analisi con Gemini...' } : x));
 
-        setHistory(prev => {
-          const updatedHistory = [newItem, ...prev].slice(0, 50);
-          if (storageMode === 'browser') {
-            storage.set("LECTURE_LENS_HISTORY", updatedHistory);
-          } else if (diskHandle) {
-            diskHandle.createWritable().then(async (writable: any) => {
-              await writable.write(JSON.stringify(updatedHistory));
-              await writable.close();
-            }).catch((e: any) => console.error("Errore salvataggio su disco:", e));
+          const finalResult = useThreePass 
+            ? await analyzeVideoThreePass(effectiveApiKey, item.subjectType, uri, { 
+                extractFormulas: item.extractFormulas,
+                onStatusUpdate: (status) => {
+                  setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: status } : x));
+                }
+              })
+            : await analyzeVideoWithFileApi(effectiveApiKey, item.subjectType, uri, { 
+                extractFormulas: item.extractFormulas,
+                onStatusUpdate: (status) => {
+                  setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: status } : x));
+                }
+              });
+
+          setQueue(q => q.map(x => x.id === item.id ? { ...x, progress: 'Estrazione concetti chiave...' } : x));
+          
+          let keyConcepts: string[] = [];
+          try {
+            keyConcepts = await extractKeyConcepts(effectiveApiKey, finalResult.notes);
+          } catch (e) {
+            console.error("Key concepts extraction failed:", e);
           }
-          return updatedHistory;
-        });
 
-        setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'completed', result: finalResult, progress: 'Completato' } : x));
-        
-        if (queue.length === 1) {
-          setResult(finalResult);
-          setActiveHistoryId(newItem.id);
-        }
+          const newItem: HistoryItem = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            name: item.file.name,
+            date: new Date().toLocaleString(),
+            result: finalResult,
+            chatHistory: [],
+            keyConcepts
+          };
 
-      } catch (err: any) {
-        console.error('Queue Processing Error:', err);
-        const errorMessage = err.message || "Errore sconosciuto";
-        
-        if (errorMessage.includes("API key") || errorMessage.includes("403") || errorMessage.includes("401") || errorMessage.includes("autenticazione")) {
-          setError(`Errore di autenticazione: ${errorMessage}. Verifica la tua chiave API nel Setup Wizard (icona ingranaggio). Se l'app è scaricata, devi inserire la tua chiave personale.`);
-        } else {
-          setError(`Errore durante l'analisi: ${errorMessage}`);
+          setHistory(prev => {
+            const updatedHistory = [newItem, ...prev].slice(0, 50);
+            if (storageMode === 'browser') {
+              storage.set("LECTURE_LENS_HISTORY", updatedHistory);
+            } else if (diskHandle) {
+              diskHandle.createWritable().then(async (writable: any) => {
+                await writable.write(JSON.stringify(updatedHistory));
+                await writable.close();
+              }).catch((e: any) => console.error("Errore salvataggio su disco:", e));
+            }
+            return updatedHistory;
+          });
+
+          setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'completed', result: finalResult, progress: 'Completato' } : x));
+          
+          if (queue.length === 1) {
+            setResult(finalResult);
+            setActiveHistoryId(newItem.id);
+          }
+
+        } catch (err: any) {
+          console.error('Queue Processing Error:', err);
+          const errorMessage = err.message || "Errore sconosciuto";
+          
+          if (errorMessage.includes("API key") || errorMessage.includes("403") || errorMessage.includes("401") || errorMessage.includes("autenticazione")) {
+            setError(`Errore di autenticazione: ${errorMessage}. Verifica la tua chiave API nel Setup Wizard (icona ingranaggio). Se l'app è scaricata, devi inserire la tua chiave personale.`);
+          } else {
+            setError(`Errore durante l'analisi: ${errorMessage}`);
+          }
+          
+          setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'error', progress: errorMessage } : x));
         }
-        
-        setQueue(q => q.map(x => x.id === item.id ? { ...x, status: 'error', progress: errorMessage } : x));
       }
+    } finally {
+      setIsProcessingQueue(false);
     }
-    setIsProcessingQueue(false);
   };
 
   const handleGenerateQuiz = async () => {

@@ -1,5 +1,6 @@
 export const MODELS = {
   FAST: "gemini-3-flash-preview",
   PRO: "gemini-3-flash-preview", // Placeholder until 3-pro is fully supported across all configs
-  VIDEO: "veo-3.1-fast-generate-preview"
+  VIDEO: "veo-3.1-fast-generate-preview",
+  GEMMA_4: "gemma-4-31b"
 };

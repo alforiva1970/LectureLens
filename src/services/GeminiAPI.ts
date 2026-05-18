@@ -4,6 +4,10 @@ import { retry } from "../lib/utils";
 import { MODELS } from "../constants/models";
 import { auth } from "../lib/firebase";
 
+export const getActiveModel = () => {
+    return (typeof localStorage !== 'undefined' ? localStorage.getItem('SILICEO_SELECTED_MODEL') : null) || MODELS.FAST;
+};
+
 // Centralized initialization for GoogleGenAI.
 const getGenAI = (apiKey: string) => {
   // Se la chiave non viene passata, prova a prenderla dal localStorage (BYOK)
@@ -39,7 +43,7 @@ export const analyzeShortVideo = async (
   });
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: MODELS.FAST,
+    model: getActiveModel(),
     contents: [
       {
         parts: [
@@ -97,28 +101,31 @@ export const uploadFileToGeminiBrowser = async (
     const headers: Record<string, string> = {
       'x-api-key': finalKey,
       'x-mime-type': mimeType,
-      'x-display-name': file.name,
-      'Content-Type': mimeType // Important for express.raw
+      'x-display-name': file.name
+      // Let the browser set the Content-Type boundary for FormData automatically
     };
     
     if (idToken) {
       headers['Authorization'] = `Bearer ${idToken}`;
     }
 
-    const backendUrl = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
     const response = await fetch(`${backendUrl}/api/gemini/upload`, {
       method: 'POST',
       headers,
-      body: file // The browser streams the File object automatically
+      body: formData
     });
 
     if (!response.ok) {
-      let errorMsg = response.statusText;
+      let errorMsg = response.statusText || `Errore HTTP ${response.status}`;
       try {
         const errData = await response.json();
         errorMsg = errData.error || errorMsg;
       } catch (e) {
-        // Ignore JSON parse error if response is not JSON
+        // Fallback to statusText or status code
       }
       throw new Error(`Upload fallito dal backend: ${errorMsg}`);
     }
@@ -338,7 +345,7 @@ Trascrivi ogni formula matematica, fisica o chimica usando la sintassi LaTeX (es
   }
 
   const response: GenerateContentResponse = await retry(() => ai.models.generateContent({
-    model: options?.model || MODELS.FAST,
+    model: options?.model || getActiveModel(),
     contents: [
       {
         parts: [

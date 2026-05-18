@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Save, X, Eye, EyeOff } from 'lucide-react';
+import { Key, Save, X, Eye, EyeOff, Bot } from 'lucide-react';
+import { MODELS } from '../../constants/models';
 
 export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const [googleKey, setGoogleKey] = useState('');
   const [openAiKey, setOpenAiKey] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
+  const [selectedModel, setSelectedModel] = useState(MODELS.FAST);
   
   const [showGoogle, setShowGoogle] = useState(false);
   const [showOpenAi, setShowOpenAi] = useState(false);
@@ -19,6 +21,7 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
       setGoogleKey(localStorage.getItem('SILICEO_GOOGLE_KEY') || '');
       setOpenAiKey(localStorage.getItem('SILICEO_OPENAI_KEY') || '');
       setAnthropicKey(localStorage.getItem('SILICEO_ANTHROPIC_KEY') || '');
+      setSelectedModel(localStorage.getItem('SILICEO_SELECTED_MODEL') || MODELS.FAST);
       setSavedStatus(false);
     }
   }, [isOpen]);
@@ -38,6 +41,8 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
     if (anthropicKey) localStorage.setItem('SILICEO_ANTHROPIC_KEY', anthropicKey);
     else localStorage.removeItem('SILICEO_ANTHROPIC_KEY');
       
+    localStorage.setItem('SILICEO_SELECTED_MODEL', selectedModel);
+      
     setTimeout(() => {
       setIsSaving(false);
       setSavedStatus(true);
@@ -53,7 +58,7 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
         <div className="p-6 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-zinc-900/50">
           <h2 className="text-xl font-bold flex items-center gap-2 dark:text-white">
             <Key className="w-5 h-5 text-indigo-500" />
-            Gestore API Keys (BYOK)
+            Configurazione API & Modelli
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-slate-500 dark:text-slate-400">
             <X className="w-5 h-5" />
@@ -62,10 +67,28 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
         <div className="p-6 space-y-6">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Le tue chiavi vengono salvate esclusivamente all'interno della memoria di questo browser (LocalStorage). Non vengono mai trasmesse ai nostri database, garantendo Privacy e Zero Trust.
+            Configura le tue API Key personali e seleziona il modello preferito. Le tue chiavi vengono salvate solo localmente nel tuo browser.
           </p>
 
           <div className="space-y-4">
+            
+            {/* Modello */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold dark:text-white flex items-center gap-2">
+                <Bot className="w-4 h-4 text-emerald-500" />
+                Modello Attivo
+              </label>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white text-sm"
+              >
+                {Object.entries(MODELS).map(([key, value]) => (
+                  <option key={key} value={value}>{key} ({value})</option>
+                ))}
+              </select>
+            </div>
+
             {/* Google Gemini */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold dark:text-white flex items-center gap-2">
@@ -150,7 +173,7 @@ export function ApiKeysSetup({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             ) : (
               <Save className="w-5 h-5" />
             )}
-            {isSaving ? 'Salvataggio...' : savedStatus ? 'Salvato!' : 'Salva Chiavi nel Browser'}
+            {isSaving ? 'Salvataggio...' : savedStatus ? 'Salvato!' : 'Salva Impostazioni'}
           </button>
         </div>
       </div>

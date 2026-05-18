@@ -16,12 +16,26 @@
         "updatedAt": { "type": "string", "description": "Timestamp ISO dell'ultimo aggiornamento" }
       },
       "required": ["email", "academicPath"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "Documento di memoria persistente per Silex (diari)",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string", "description": "Contenuto del diario" },
+        "lastUpdated": { "type": "string", "format": "date-time", "description": "Ultimo aggiornamento" }
+      },
+      "required": ["content", "lastUpdated"]
     }
   },
   "firestore": {
     "users/{userId}": {
       "schema": "#/entities/UserProfile",
       "description": "Documento del profilo dell'utente loggato, usa il UID di Firebase Auth come ID"
+    },
+    "memory/{docId}": {
+      "schema": "#/entities/Memory",
+      "description": "Diari di sistema (silex-diary, dev-diary)"
     }
   }
 }
