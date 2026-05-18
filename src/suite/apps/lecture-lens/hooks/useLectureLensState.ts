@@ -6,6 +6,7 @@ import { SubjectType } from '../../../../constants/SubjectConfig';
 import { analyzeVideoWithFileApi, analyzeVideoThreePass, extractKeyConcepts, generateQuiz, generateExtra, uploadFileToGeminiBrowser } from '../../../../services/GeminiAPI';
 import * as UniversityService from '../../../../services/UniversityService';
 import { useUserProfile } from '../../../../lib/useUserProfile';
+import { getKey } from '../../../../lib/secureStorage';
 
 export function useLectureLensState() {
   const { profile } = useUserProfile();
@@ -93,7 +94,7 @@ export function useLectureLensState() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const envApiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  const byokKey = typeof localStorage !== 'undefined' ? localStorage.getItem("SILICEO_GOOGLE_KEY") : null;
+  const byokKey = typeof localStorage !== 'undefined' ? getKey('GOOGLE_KEY') : null;
   const legacyKey = typeof localStorage !== 'undefined' ? localStorage.getItem("LECTURE_LENS_KEY") : null;
   
   // BYOK ha la priorità, poi env, infine il vecchio legacy
